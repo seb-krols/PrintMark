@@ -1,0 +1,42 @@
+# Exercise the installed app and upgrade/uninstall without using the runner's real config.
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+$originalAppData = $env:APPDATA
+$trial = Join-Path $env:RUNNER_TEMP ('BaseMark lab ' + [char]0x00E9 + ' ' + [guid]::NewGuid())
+$install = Join-Path $trial 'Installed app'
+$env:APPDATA = Join-Path $trial 'User data'
+New-Item $trial -ItemType Directory -Force | Out-Null
+try {
+    $setup = (Get-ChildItem dist/basemark-*-windows-x64-setup.exe | Select-Object -Last 1).FullName
+    $options = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$install`"")
+    $p = Start-Process $setup -ArgumentList $options -Wait -PassThru
+    if ($p.ExitCode -ne 0) { throw "Installer failed: $($p.ExitCode)" }
+    $binary = Join-Path $install 'basemark.exe'
+    $job = Join-Path $trial 'Lab coupon.gcode'
+    Copy-Item tests/fixtures/prusaslicer-2.8.1-petg-relative.gcode $job
+    & $binary --mode auto $job
+    if ($LASTEXITCODE -ne 0) { throw 'Installed executable failed' }
+    if (!(Get-Content $job -First 1).StartsWith('; BASEMARK stamp')) { throw 'No stamp produced' }
+    $state = Join-Path $env:APPDATA 'BaseMark/counter.json'
+    $log = Join-Path $env:APPDATA 'BaseMark/log.csv'
+    if ((Get-Content $state -Raw | ConvertFrom-Json).next -ne 2) { throw 'Counter did not advance' }
+    $stateHash = (Get-FileHash $state).Hash
+    $logHash = (Get-FileHash $log).Hash
+    $desktop = Start-Process (Join-Path $install 'basemark-desktop.exe') -PassThru
+    Start-Sleep -Seconds 12
+    $desktop.Refresh()
+    if ($desktop.HasExited) { throw 'Desktop settings launcher exited unexpectedly' }
+    # End the UI smoke process before testing an upgrade.
+    taskkill /PID $desktop.Id /T /F | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Could not close settings process' }
+    $p = Start-Process $setup -ArgumentList $options -Wait -PassThru
+    if ($p.ExitCode -ne 0) { throw 'Upgrade failed' }
+    $p = Start-Process (Join-Path $install 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+    if ($p.ExitCode -ne 0 -or (Test-Path $binary)) { throw 'Uninstall failed' }
+    if ((Get-FileHash $state).Hash -ne $stateHash -or (Get-FileHash $log).Hash -ne $logHash) {
+        throw 'Upgrade/uninstall altered audit history'
+    }
+    Write-Host 'Installed executable, desktop launch, upgrade and uninstall verified.'
+} finally {
+    $env:APPDATA = $originalAppData
+}

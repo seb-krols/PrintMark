@@ -1,0 +1,75 @@
+name: Build portable executables
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows-x64
+          - os: ubuntu-22.04
+            platform: linux-x64
+          - os: macos-14
+            platform: macos-arm64
+          - os: macos-15-intel
+            platform: macos-x64
+    runs-on: ${{ matrix.os }}
+    env:
+      UV_PYTHON: '3.12'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --extra dev
+      - run: uv run ruff check .
+      - name: Test
+        run: uv run pytest
+      - name: Build console executable (preserves slicer stderr)
+        if: runner.os != 'Windows'
+        run: uv run pyinstaller --noconfirm --clean --onefile --name basemark --collect-data basemark scripts/entrypoint.py
+      - name: Smoke-test the executable and archive release files
+        if: runner.os != 'Windows'
+        run: uv run python scripts/package_release.py ${{ matrix.platform }}
+      - name: Build Windows installer and portable package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/build_windows.ps1
+      - name: Verify Windows installation
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/test_windows_install.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: basemark-${{ matrix.platform }}
+          path: |
+            dist/basemark-*.zip
+            dist/basemark-*.sha256
+            dist/basemark-*-setup.exe
+          if-no-files-found: error
+  draft:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Stage a draft release for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" --draft --title "BaseMark $RELEASE_TAG — lab pilot" --generate-notes artifacts/*

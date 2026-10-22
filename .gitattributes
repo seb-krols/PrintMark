@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.gcode -text
+*.ttf binary
+*.png binary
+*.stl -text

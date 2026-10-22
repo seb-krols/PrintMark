@@ -1,0 +1,156 @@
+"""Local counter and audit log with an explicit, recoverable file-write journal.
+
+One lock serializes a workstation's exports, including the interactive decision.
+The journal is persisted BEFORE the G-code replacement. The counter advances
+AFTER it. Recovery compares hashes and never blindly reuses an uncertain ID.
+"""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import io
+import json
+from pathlib import Path
+
+from filelock import FileLock, Timeout
+
+from .config import atomic_write
+from .errors import SafeSkip
+
+LOG_FIELDS = [
+    "transaction",
+    "id",
+    "timestamp",
+    "material",
+    "gcode_filename",
+    "object_names",
+    "computer",
+    "layers",
+    "text_height_mm",
+    "removed_filament_mm",
+    "sha256",
+]
+
+
+def digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+class Counter:
+    def __init__(self, path: Path, minimum: int = 1, *, recover: bool = True):
+        self.path = path
+        self.minimum = minimum
+        self.auto_recover = recover
+        self.lock = FileLock(str(path) + ".lock", timeout=0.25)
+        self.state = {"next": minimum, "pending": None}
+
+    def __enter__(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.lock.acquire()
+        except Timeout as exc:
+            raise SafeSkip(
+                "another export/settings window is using this counter; try again"
+            ) from exc
+        try:
+            if self.path.exists():
+                self.state = json.loads(self.path.read_text(encoding="utf-8"))
+                if type(self.state.get("next")) is not int or self.state["next"] < 1:
+                    raise SafeSkip("counter state is invalid; restore its backup")
+            if self.auto_recover:
+                self.recover()
+            self.state["next"] = max(self.minimum, self.state["next"])
+        except BaseException:
+            self.lock.release()
+            raise
+        return self
+
+    def __exit__(self, *_):
+        self.lock.release()
+
+    @property
+    def next(self):
+        return self.state["next"]
+
+    def save(self):
+        atomic_write(self.path, json.dumps(self.state, indent=2).encode("utf-8"))
+
+    def recover(self):
+        pending = self.state.get("pending")
+        if not pending:
+            return
+        target = Path(pending["target"])
+        if not target.exists():
+            # PrusaSlicer may already have copied and deleted its temporary file.
+            # Only an absolute final path AND the exact committed hash are evidence.
+            final = Path(pending["row"].get("gcode_filename", ""))
+            if (
+                final.is_absolute()
+                and final.is_file()
+                and digest(final.read_bytes()) == pending["after"]
+            ):
+                self.finish()
+                return
+            raise SafeSkip(
+                f"interrupted export needs review: {target} is missing; see docs/recovery.md"
+            )
+        current = digest(target.read_bytes())
+        if current == pending["after"]:
+            self.finish()
+        elif current == pending["before"]:
+            self.state["pending"] = None
+            self.save()
+        else:
+            raise SafeSkip("interrupted export changed externally; see docs/recovery.md")
+
+    def recover_from(self, candidate: Path):
+        pending = self.state.get("pending")
+        if not pending:
+            raise SafeSkip("no interrupted export is waiting for recovery")
+        if digest(candidate.read_bytes()) != pending["after"]:
+            raise SafeSkip(
+                "selected file does not match the stamped output; recovery was not changed"
+            )
+        # Persist the new location before committing, so another interruption can recover.
+        pending["target"] = str(candidate.resolve())
+        self.save()
+        self.finish()
+
+    def prepare(self, target: Path, original: bytes, output: bytes, row: dict, log: Path):
+        self.state["pending"] = {
+            "target": str(target.resolve()),
+            "before": digest(original),
+            "after": digest(output),
+            "row": row,
+            "log": str(log.resolve()),
+            "next": self.next + 1,
+        }
+        self.save()
+
+    def finish(self):
+        pending = self.state["pending"]
+        log = Path(pending["log"])
+        log.parent.mkdir(parents=True, exist_ok=True)
+        # Separate lock permits different local counters to share a CSV safely on
+        # one machine. Network filesystems are intentionally not supported yet.
+        with FileLock(str(log) + ".lock", timeout=1):
+            existing = log.read_text(encoding="utf-8-sig") if log.exists() else ""
+            rows = list(csv.DictReader(io.StringIO(existing))) if existing else []
+            if existing and csv.DictReader(io.StringIO(existing)).fieldnames != LOG_FIELDS:
+                raise SafeSkip("log header is incompatible; choose a new CSV log file")
+            if not any(r["transaction"] == pending["row"]["transaction"] for r in rows):
+                stream = io.StringIO(newline="")
+                writer = csv.DictWriter(stream, fieldnames=LOG_FIELDS)
+                writer.writeheader()
+                writer.writerows(rows)
+                writer.writerow(pending["row"])
+                atomic_write(log, stream.getvalue().encode("utf-8"))
+        self.state = {"next": pending["next"], "pending": None}
+        self.save()
+
+    def reset(self, value: int):
+        if value < self.next:
+            raise SafeSkip("counter cannot move backwards; use a new prefix and counter file")
+        self.state["next"] = value
+        self.save()

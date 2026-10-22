@@ -1,0 +1,34 @@
+name: Windows installer
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+      - name: Test and build Windows executables and installer
+        shell: pwsh
+        run: ./scripts/build_windows.ps1
+      - name: Verify installation, launch, upgrade and uninstall
+        shell: pwsh
+        run: ./scripts/test_windows_install.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: basemark-windows-x64
+          path: |
+            dist/basemark-*.zip
+            dist/basemark-*.sha256
+            dist/basemark-*-setup.exe
+          if-no-files-found: error

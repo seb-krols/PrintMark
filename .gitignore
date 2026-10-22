@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+*.spec
+.private/
+*.license.json
+.coverage
+coverage.xml
+htmlcov/
