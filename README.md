@@ -17,6 +17,10 @@ This is not yet a production-qualified printer accessory.
 
 ## Start here
 
+Windows packaging is implemented; the first GitHub build is currently blocked by a
+`startup_failure` before jobs start. No Windows artifact is available yet. See the
+[verification record](docs/verification.md) for the current evidence.
+
 1. Download the artifact from the latest successful [Windows build](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml)
    and run its `basemark-…-setup.exe`. A portable ZIP is also included; neither needs Python.
 2. Open **BaseMark Settings** from Start, assign each PC a unique prefix (`A`, `B`, …), and

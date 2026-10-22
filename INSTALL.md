@@ -4,6 +4,11 @@ BaseMark is the application in the **PrintMark** repository. This pilot targets 
 PrusaSlicer and plain text G-code for the shop's MK3S and Bambu profiles. Python is not needed.
 Printer/profile qualification and physical coupon tests are still required.
 
+**Build status (2026-10-22):** GitHub currently fails before starting the Windows runner.
+The installer source is ready, but there is no successful downloadable Windows artifact yet.
+The steps below apply once the build is unblocked; the source-build command at the end can
+also run on a Windows PC. See the [verification record](docs/verification.md).
+
 ## 1. Download and install
 
 While signed into the GitHub account with access to this private repository, open

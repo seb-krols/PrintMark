@@ -10,7 +10,7 @@ Environment: Linux x86-64, Python 3.12.15; desktop interaction also exercised wi
 that build only exposed the fixed bitmap font on this machine, so native Tk 8.6 was used to
 inspect typography and capture the actual UI screenshots. No desktop configuration was changed.
 
-Final automated run at this stage: **102 passing tests, 91% statement coverage**. Coverage is
+Latest automated run: **114 passing tests, 88% statement coverage**. Coverage is
 a description of exercised code, not a claim of complete safety or printer qualification.
 
 - Automated tests cover relative/absolute E, relative XYZ, G92, retraction conservation,
@@ -21,7 +21,9 @@ a description of exercised code, not a claim of complete safety or printer quali
 - File tests cover cancellation, disabled mode, duplicate stamping, path collisions, binary
   input, atomic-replace failure, a post-replace durability failure and audit recovery.
 - Counter tests cover locking, monotonic IDs, interruption before/after replacement, missing
-  pending files and idempotent CSV replay.
+  pending files, exact-hash recovery from surviving final exports and idempotent CSV replay.
+- Diagnostics checks cover nonmutating profile inspection, skip exit codes, last-export reports
+  and protection of G-code/config/counter/log/lock paths against accidental collisions.
 - Tk tests exercise drag direction in underside view, resize, rotation, invalid placement,
   Apply/Skip behavior, visible action buttons and settings persistence.
 - Ruff lint/format and PyInstaller one-file build were run locally. Frozen CLI version and
@@ -72,8 +74,13 @@ more conservative runtime baseline.
 
 ## Still to be verified
 
-- Windows and macOS CI execution and fresh-machine standalone tests. Workflows are supplied;
-  no GitHub CI run is claimed until this checkout is hosted and the workflows execute.
+- Windows and macOS CI execution and fresh-machine standalone tests. The private repository
+  is now hosted at `seb-krols/PrintMark`. Initial push and manual CI/Windows runs on
+  2026-10-22 ended in `startup_failure` before any job was created. No build logs or check
+  annotations were exposed by the API; Actions is enabled. Local actionlint validation passed.
+  See [Windows run](https://github.com/seb-krols/PrintMark/actions/runs/39834938542).
+  No native Windows build has succeeded yet. `Runner availability check` is a manual
+  diagnostic with no checkout or third-party actions to isolate runner startup problems.
 - The owner's exact Windows/PrusaSlicer version and both MK3S and Bambu printer profiles.
 - Interactive export on the actual Windows PCs; no-display fallback on their automation hosts.
 - Manual inspection of the exported file in PrusaSlicer G-code Viewer on the shop PC.

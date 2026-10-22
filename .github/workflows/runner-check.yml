@@ -1,0 +1,15 @@
+name: Runner availability check
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 3
+    steps:
+      - name: Confirm GitHub can start a Windows job
+        shell: pwsh
+        run: Write-Output 'Windows runner started; no checkout or third-party actions used.'
