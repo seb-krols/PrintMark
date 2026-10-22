@@ -48,13 +48,16 @@ def auto_place(text: str, surface, height: float, minimum: float) -> Placement:
         sizes.append(max(minimum, round(sizes[-1] - 0.5, 6)))
     for size in sizes:
         shape = text_polygons(text, size)
-        left, bottom, right, top = shape.bounds
-        fits = []
-        for point in candidates:
-            rect = box(left + point.x, bottom + point.y, right + point.x, top + point.y)
-            if surface.covers(rect):
-                fits.append((rect.distance(surface.boundary), point))
-        if fits:
-            _, best = max(fits, key=lambda item: item[0])
-            return Placement(text, size, best.x, best.y)
+        # Prefer readable full-size text. Try a quarter turn before shrinking;
+        # retain the familiar horizontal layout whenever it fits at this size.
+        for angle in (0, 90):
+            left, bottom, right, top = affinity.rotate(shape, angle, origin=(0, 0)).bounds
+            fits = []
+            for point in candidates:
+                rect = box(left + point.x, bottom + point.y, right + point.x, top + point.y)
+                if surface.covers(rect):
+                    fits.append((rect.distance(surface.boundary), point))
+            if fits:
+                _, best = max(fits, key=lambda item: item[0])
+                return Placement(text, size, best.x, best.y, angle)
     raise SafeSkip("label does not fit the largest island at the minimum text height")

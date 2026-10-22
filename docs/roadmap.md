@@ -1,5 +1,15 @@
 # From lab pilot to a useful shared tool
 
+## Implemented in v0.3
+
+- Find a part by printed ID in settings or the CLI, using the existing CSV history.
+- Try 90° placement before reducing text size on narrow parts.
+- Check logged IDs and CSV integrity before changing G-code; serialize the check and commit.
+- Protect hard-linked storage collisions and accept Windows UTF-8 BOM configuration files.
+
+The next priority is qualifying real Windows exports and physical coupons. Add per-object
+marking and arc support after those results establish which cases the shop actually needs.
+
 ## Pilot
 
 - Qualify MK3S PLA/smooth and PETG/textured settings with the supplied matrix.

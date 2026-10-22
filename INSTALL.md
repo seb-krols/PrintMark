@@ -16,8 +16,8 @@ While signed into the GitHub account with access to this private repository, ope
 Choose the latest **successful** run on `main`, then download the `basemark-windows-x64`
 artifact at the bottom. Extract that artifact ZIP. It contains:
 
-- `basemark-0.2.0-windows-x64-setup.exe`: the recommended per-user installer.
-- `basemark-0.2.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
+- `basemark-0.3.0-windows-x64-setup.exe`: the recommended per-user installer.
+- `basemark-0.3.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
 - SHA-256 files for verifying downloads with PowerShell `Get-FileHash`.
 
 Run the setup executable. It installs to `%LOCALAPPDATA%\Programs\BaseMark` without
@@ -75,6 +75,9 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
 
 ## Daily use, updates and removal
 
+- **Find a part:** open **Find part** in settings and enter its full printed ID (`A042`).
+  It searches the CSV selected in saved settings and shows the original export's details.
+  An unknown ID may belong to another PC; each computer keeps its own local history.
 - **Skip one job:** choose **Skip label** in the popup. For automatic mode, temporarily
   append `--off` to the hook. Remove that option afterward.
 - **Settings and records:** `%APPDATA%\BaseMark\` contains `config.toml`, `counter.json`,
@@ -94,6 +97,7 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
 | File cannot fit a stamp | Use a larger footprint, adjust size/margin within limits, or skip this part. Holes and sparse bottoms reduce the usable area. |
 | Unsupported command/profile | Run `--dump-env` through the hook once, preserve a small original export and report the skip reason. Restore the normal hook afterward. |
 | Pending audit / missing temporary file | Close Excel if it has the CSV open. Use **Diagnostics → Recover from exported G-code** with the exact surviving stamped file. See [recovery](docs/recovery.md). |
+| ID already exists in the audit log | Restore the counter backup, or move Next ID above the highest recorded number for this series. Keep the CSV; do not delete history to clear the error. |
 | Export fails to launch BaseMark | Re-copy the quoted command from settings; ensure the exe has not been moved or removed. |
 
 For a command-line compatibility check in PowerShell:

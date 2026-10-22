@@ -149,3 +149,16 @@ def test_path_collisions_never_overwrite_source(job_file, tmp_path):
     with pytest.raises(SafeSkip, match="different paths"):
         process(job_file, tmp_path / "config.toml", {"counter_file": str(job_file)}, {})
     assert job_file.read_bytes() == original
+
+
+def test_hardlinked_lock_cannot_truncate_gcode(job_file, tmp_path):
+    import os
+
+    original = job_file.read_bytes()
+    try:
+        os.link(job_file, tmp_path / "counter.json.lock")
+    except OSError:
+        pytest.skip("hard links are not available on this filesystem")
+    with pytest.raises(SafeSkip, match="different paths"):
+        process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
+    assert job_file.read_bytes() == original

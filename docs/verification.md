@@ -10,7 +10,7 @@ Environment: Linux x86-64, Python 3.12.15; desktop interaction also exercised wi
 that build only exposed the fixed bitmap font on this machine, so native Tk 8.6 was used to
 inspect typography and capture the actual UI screenshots. No desktop configuration was changed.
 
-Latest automated run: **114 passing tests, 88% statement coverage**. Coverage is
+Latest automated run: **132 passing tests, 89% statement coverage**. Coverage is
 a description of exercised code, not a claim of complete safety or printer qualification.
 
 - Automated tests cover relative/absolute E, relative XYZ, G92, retraction conservation,
@@ -25,9 +25,16 @@ a description of exercised code, not a claim of complete safety or printer quali
 - Diagnostics checks cover nonmutating profile inspection, skip exit codes, last-export reports
   and protection of G-code/config/counter/log/lock paths against accidental collisions.
 - Tk tests exercise drag direction in underside view, resize, rotation, invalid placement,
-  Apply/Skip behavior, visible action buttons and settings persistence.
+  Apply/Skip behavior, visible action buttons, settings persistence and part lookup.
+- New v0.3 regressions cover rotation before shrinking, exact-ID lookup with Unicode/multiline
+  CSV fields, JSON CLI results, missing/malformed history, lost counters, serialized ID checks,
+  conflicting transaction recovery, hard-linked file collisions, UTF-8 BOM configs and escaped
+  template placeholders. No malformed-log or reused-ID test changes its input G-code.
 - Ruff lint/format and PyInstaller one-file build were run locally. Frozen CLI version and
   an actual stamping/audit round trip are smoke-tested by the packaging script.
+- The v0.3 Linux one-file executable also passed the new JSON part-ID lookup smoke test;
+  `dist/basemark-0.3.0-linux-x64.zip` was generated with documentation, licenses and checksum.
+  The updated settings, diagnostics and Find part screens were inspected on a virtual Tk display.
 
 ## Real PrusaSlicer checks
 

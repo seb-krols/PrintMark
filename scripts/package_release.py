@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.metadata
+import json
 import os
 import shutil
 import subprocess
@@ -45,11 +46,22 @@ def main(platform: str):
             )
         if not (temp / "log.csv").exists():
             raise RuntimeError("Frozen binary did not produce the audit log")
+        lookup = subprocess.run(
+            [str(binary), "--config", str(temp / "config.toml"), "--lookup", "001", "--json"],
+            check=True,
+            timeout=30,
+            capture_output=True,
+            text=True,
+        )
+        records = json.loads(lookup.stdout)
+        if len(records) != 1 or records[0]["material"] != "PETG":
+            raise RuntimeError("Frozen part-ID lookup did not find the stamped export")
     archive = ROOT / "dist" / f"basemark-{__version__}-{platform}.zip"
     files = [
         binary,
         ROOT / "README.md",
         ROOT / "INSTALL.md",
+        ROOT / "CHANGELOG.md",
         ROOT / "LICENSE",
         ROOT / "THIRD_PARTY_NOTICES.md",
         ROOT / "src/basemark/assets/OFL.txt",

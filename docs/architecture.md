@@ -70,9 +70,11 @@ guarantees readability or negligible mechanical change.
 Before replacement: read the file, validate settings/profile, parse, find a fit, allow the
 operator to decide, generate output, and check that input bytes have not changed. Then:
 
-1. Hold a per-counter OS lock and persist a journal with old/new hashes, ID and CSV record.
+1. Hold a per-counter OS lock. After placement, acquire the CSV lock, validate its structure
+   and check that the proposed ID is unused. Persist a journal with old/new hashes, ID and CSV record.
 2. Write a same-directory temporary G-code file, flush/fsync, and atomically replace the input.
-3. Write the CSV atomically, advance the counter, and clear the journal.
+3. Write the CSV atomically, advance the counter, and clear the journal. Hold the CSV lock
+   from the unused-ID check through the commit; nested recovery reuses that same lock object.
 
 The counter increments after file replacement. Recovery checks hashes to distinguish an
 uncommitted replacement from a committed one. If the slicer has already deleted a temporary

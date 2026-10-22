@@ -88,61 +88,62 @@ def process(
         if not placed.fits(surface):
             raise SafeSkip("placement is outside the solid surface or margin")
         output = rewrite(program, placed.geometry, settings.layers, part_id)
-        if preview:
-            atomic_write(preview, svg_preview(footprint, surface, placed).encode("utf-8"))
-        if dry_run:
-            return Outcome(
-                "preview",
-                f"Preview {label}: {output.changed_moves} moves; no ID consumed.",
-                part_id,
-                output.removed_e,
-                output.changed_moves,
-            )
-        encoded = output.text.encode("utf-8")
-        if path.read_bytes() != original:
-            raise SafeSkip("G-code changed during placement; export again")
-        row = {
-            "transaction": uuid.uuid4().hex,
-            "id": part_id,
-            "timestamp": now.isoformat(),
-            "material": job.material,
-            "gcode_filename": job.output_name,
-            "object_names": " | ".join(program.objects),
-            "computer": socket.gethostname(),
-            "layers": settings.layers,
-            "text_height_mm": placed.height,
-            "removed_filament_mm": round(output.removed_e, 7),
-            "sha256": digest(encoded),
-        }
-        counter.prepare(path, original, encoded, row, log_path)
-        try:
-            atomic_write(path, encoded, mode=stat.S_IMODE(path.stat().st_mode))
-        except OSError as exc:
-            # A directory fsync can fail AFTER os.replace has committed the file.
-            # Distinguish that case from failure before replacement.
-            if path.read_bytes() == encoded:
+        with counter.guard_id(log_path, part_id):
+            if preview:
+                atomic_write(preview, svg_preview(footprint, surface, placed).encode("utf-8"))
+            if dry_run:
                 return Outcome(
-                    "stamped-pending-audit",
-                    f"Stamped {label}; write durability/audit recovery pending ({exc}). "
-                    "See docs/recovery.md.",
+                    "preview",
+                    f"Preview {label}: {output.changed_moves} moves; no ID consumed.",
                     part_id,
                     output.removed_e,
                     output.changed_moves,
                 )
-            counter.recover()
-            raise
-        try:
-            counter.finish()
-        except Exception as exc:
-            # The source is already safely replaced. Retain the persisted journal
-            # and report the distinction; do not falsely claim the file is unchanged.
-            return Outcome(
-                "stamped-pending-audit",
-                f"Stamped {label}; audit recovery pending ({exc}). See docs/recovery.md.",
-                part_id,
-                output.removed_e,
-                output.changed_moves,
-            )
+            encoded = output.text.encode("utf-8")
+            if path.read_bytes() != original:
+                raise SafeSkip("G-code changed during placement; export again")
+            row = {
+                "transaction": uuid.uuid4().hex,
+                "id": part_id,
+                "timestamp": now.isoformat(),
+                "material": job.material,
+                "gcode_filename": job.output_name,
+                "object_names": " | ".join(program.objects),
+                "computer": socket.gethostname(),
+                "layers": settings.layers,
+                "text_height_mm": placed.height,
+                "removed_filament_mm": round(output.removed_e, 7),
+                "sha256": digest(encoded),
+            }
+            counter.prepare(path, original, encoded, row, log_path)
+            try:
+                atomic_write(path, encoded, mode=stat.S_IMODE(path.stat().st_mode))
+            except OSError as exc:
+                # A directory fsync can fail AFTER os.replace has committed the file.
+                # Distinguish that case from failure before replacement.
+                if path.read_bytes() == encoded:
+                    return Outcome(
+                        "stamped-pending-audit",
+                        f"Stamped {label}; write durability/audit recovery pending ({exc}). "
+                        "See docs/recovery.md.",
+                        part_id,
+                        output.removed_e,
+                        output.changed_moves,
+                    )
+                counter.recover()
+                raise
+            try:
+                counter.finish()
+            except Exception as exc:
+                # The source is already safely replaced. Retain the persisted journal
+                # and report the distinction; do not falsely claim the file is unchanged.
+                return Outcome(
+                    "stamped-pending-audit",
+                    f"Stamped {label}; audit recovery pending ({exc}). See docs/recovery.md.",
+                    part_id,
+                    output.removed_e,
+                    output.changed_moves,
+                )
     return Outcome(
         "stamped",
         f"Stamped {label} · {settings.layers} layers · {placed.height:g} mm · "

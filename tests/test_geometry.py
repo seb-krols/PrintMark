@@ -38,6 +38,19 @@ def test_tiny_surface_skipped():
         auto_place(">PLA< 001", box(0, 0, 5, 5), 6, 4)
 
 
+def test_auto_rotation_preserves_size_on_narrow_part():
+    surface = box(0, 0, 12, 80)
+    placement = auto_place(">PETG< A042", surface, 6, 4)
+    assert placement.angle == 90
+    assert placement.height == 6
+    assert placement.fits(surface)
+
+
+def test_auto_keeps_horizontal_when_both_orientations_fit():
+    placement = auto_place(">PLA< 001", box(0, 0, 100, 100), 6, 4)
+    assert placement.angle == 0
+
+
 @pytest.mark.parametrize("text", ["", "\n", "🖨", "X" * 81])
 def test_unsupported_text_is_explicit(text):
     with pytest.raises(SafeSkip):

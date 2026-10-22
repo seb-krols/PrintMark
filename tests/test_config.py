@@ -54,6 +54,8 @@ def test_slicer_quoted_filament_notes():
         {"template": "{material} {id:2}"},
         {"enabled": "false"},
         {"template": "{"},
+        {"template": "{{material}} {id}"},
+        {"template": "{material} {{id}}"},
     ],
 )
 def test_invalid_config_rejected(data):
@@ -102,3 +104,9 @@ def test_dump_default_omits_credentials():
     assert json.loads(diagnostic_env(env)) == {"SLIC3R_FILAMENT_TYPE": "PLA"}
     assert "SLIC3R_PRINTHOST_APIKEY" in json.loads(diagnostic_env(env, all_keys=True))
     assert "TOKEN" not in json.loads(diagnostic_env(env, all_keys=True))
+
+
+def test_windows_utf8_bom_config(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text('counter_prefix = "A"\n', encoding="utf-8-sig")
+    assert load_settings(path).counter_prefix == "A"

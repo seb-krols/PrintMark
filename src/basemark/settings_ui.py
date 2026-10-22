@@ -7,6 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from .audit import format_records, lookup_id
 from .config import Settings, config_dir, load_settings, save_settings, validate_paths
 from .counter import Counter
 from .diagnostics import read_report
@@ -39,14 +40,15 @@ class SettingsWindow:
         ttk.Separator(root).pack(side="bottom", fill="x")
         notebook = ttk.Notebook(root)
         notebook.pack(fill="both", expand=True, padx=28, pady=(4, 20))
-        general, identity, integration, diagnostics = (
-            ttk.Frame(notebook, padding=20) for _ in range(4)
+        general, identity, integration, diagnostics, records = (
+            ttk.Frame(notebook, padding=20) for _ in range(5)
         )
         for name, panel in [
             ("Stamp", general),
             ("Identity & records", identity),
             ("PrusaSlicer setup", integration),
             ("Diagnostics", diagnostics),
+            ("Find part", records),
         ]:
             notebook.add(panel, text=name)
             panel.columnconfigure(1, weight=1)
@@ -89,7 +91,45 @@ class SettingsWindow:
         ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(16, 0))
         self.integration(integration)
         self.diagnostics(diagnostics)
+        self.records(records)
         center(root, 860, 760)
+
+    def records(self, panel):
+        ttk.Label(panel, text="Find a printed part", style="Heading.TLabel").pack(anchor="w")
+        ttk.Label(
+            panel,
+            text="Enter the complete ID, including the PC prefix and leading zeros.\n"
+            "Searches the CSV in your saved settings. This does not consume an ID.",
+            foreground=MUTED,
+        ).pack(anchor="w", pady=(8, 16))
+        row = ttk.Frame(panel)
+        row.pack(fill="x")
+        self.lookup_value = tk.StringVar()
+        entry = ttk.Entry(row, textvariable=self.lookup_value)
+        entry.pack(side="left", fill="x", expand=True)
+        entry.bind("<Return>", lambda _: self.find_part())
+        ttk.Button(row, text="Find part", command=self.find_part).pack(side="right", padx=(10, 0))
+        result = ttk.Frame(panel)
+        result.pack(fill="both", expand=True, pady=(16, 0))
+        self.lookup_result = tk.Text(
+            result, height=12, width=50, wrap="word", font=(FONT, 10), state="disabled"
+        )
+        scroll = ttk.Scrollbar(result, orient="vertical", command=self.lookup_result.yview)
+        scroll.pack(side="right", fill="y")
+        self.lookup_result.configure(yscrollcommand=scroll.set)
+        self.lookup_result.pack(side="left", fill="both", expand=True)
+
+    def find_part(self):
+        try:
+            settings = load_settings(self.path)
+            _, log = settings.paths(self.path.parent)
+            result = format_records(lookup_id(log, self.lookup_value.get()))
+        except Exception as exc:
+            result = f"Could not search the log: {exc}"
+        self.lookup_result.configure(state="normal")
+        self.lookup_result.delete("1.0", "end")
+        self.lookup_result.insert("1.0", result)
+        self.lookup_result.configure(state="disabled")
 
     def field(self, parent, row, key, label, choices=None):
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=(0, 25), pady=9)

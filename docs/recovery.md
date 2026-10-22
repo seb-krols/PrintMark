@@ -41,3 +41,16 @@ at the journal's log path before recovery. Keep both logs together as an audit h
 
 Never move a live counter between computers or put it on a network share in this release.
 For a fresh numbering series, choose a new prefix and a new local counter file.
+
+## Missing or reset counter
+
+Before changing G-code, BaseMark checks the selected CSV for the proposed ID. If the ID
+already exists, the export is skipped unchanged. Restore a trusted counter backup or set
+**Identity & records → Next ID number** above the highest used number for that series.
+Review the entire history, including archived logs, when choosing a number. Do not delete
+the audit log to bypass this check. If both counter and history are lost, start a distinct
+prefix/series; the software cannot reconstruct IDs from parts already in the lab.
+
+Malformed CSV headers/rows also block stamping before file replacement. Preserve the file
+and restore a backup. **Find part** and `--lookup ID` are read-only ways to inspect valid
+history; conflicting duplicate entries are displayed together rather than silently selecting one.

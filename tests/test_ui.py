@@ -105,3 +105,21 @@ def test_settings_opens_with_missing_pending_target(root, tmp_path):
     app = SettingsWindow(root, tmp_path / "config.toml")
     assert app.values["counter_next"].get() == "1"
     assert path.read_bytes() == before
+
+
+def test_find_part_displays_export_without_consuming_id(root, tmp_path, job_file):
+    from basemark.service import process
+    from basemark.settings_ui import SettingsWindow
+
+    config = tmp_path / "config.toml"
+    process(job_file, config, {"mode": "auto", "counter_prefix": "A"}, {})
+    before = (tmp_path / "counter.json").read_bytes()
+    app = SettingsWindow(root, config)
+    app.lookup_value.set("A001")
+    app.find_part()
+    assert "A001 · PLA" in app.lookup_result.get("1.0", "end")
+    assert str(job_file) in app.lookup_result.get("1.0", "end")
+    app.lookup_value.set("A999")
+    app.find_part()
+    assert "No matching ID" in app.lookup_result.get("1.0", "end")
+    assert (tmp_path / "counter.json").read_bytes() == before

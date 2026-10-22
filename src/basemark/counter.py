@@ -11,26 +11,14 @@ import csv
 import hashlib
 import io
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 from filelock import FileLock, Timeout
 
+from .audit import LOG_FIELDS, read_log
 from .config import atomic_write
 from .errors import SafeSkip
-
-LOG_FIELDS = [
-    "transaction",
-    "id",
-    "timestamp",
-    "material",
-    "gcode_filename",
-    "object_names",
-    "computer",
-    "layers",
-    "text_height_mm",
-    "removed_filament_mm",
-    "sha256",
-]
 
 
 def digest(data: bytes) -> str:
@@ -44,6 +32,7 @@ class Counter:
         self.auto_recover = recover
         self.lock = FileLock(str(path) + ".lock", timeout=0.25)
         self.state = {"next": minimum, "pending": None}
+        self.audit_locks = {}
 
     def __enter__(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -118,6 +107,8 @@ class Counter:
         self.finish()
 
     def prepare(self, target: Path, original: bytes, output: bytes, row: dict, log: Path):
+        if self.state.get("pending"):
+            raise SafeSkip("recover the pending export before preparing another stamp")
         self.state["pending"] = {
             "target": str(target.resolve()),
             "before": digest(original),
@@ -128,18 +119,50 @@ class Counter:
         }
         self.save()
 
+    def audit_lock(self, log: Path):
+        key = str(log.resolve())
+        if key not in self.audit_locks:
+            log.parent.mkdir(parents=True, exist_ok=True)
+            self.audit_locks[key] = FileLock(key + ".lock", timeout=1)
+        return self.audit_locks[key]
+
+    @contextmanager
+    def guard_id(self, log: Path, part_id: str):
+        # Hold through replacement AND audit commit. Separate counters sharing a
+        # local log must not both pass the same unused-ID check concurrently.
+        lock = self.audit_lock(log)
+        try:
+            lock.acquire()
+        except Timeout as exc:
+            raise SafeSkip("another export is using the audit log; try again") from exc
+        try:
+            if any(row["id"] == part_id for row in read_log(log)):
+                raise SafeSkip(
+                    f"ID {part_id} already exists in the audit log; restore the counter backup "
+                    "or set Next ID above the highest used number"
+                )
+            yield
+        finally:
+            lock.release()
+
     def finish(self):
         pending = self.state["pending"]
         log = Path(pending["log"])
         log.parent.mkdir(parents=True, exist_ok=True)
         # Separate lock permits different local counters to share a CSV safely on
         # one machine. Network filesystems are intentionally not supported yet.
-        with FileLock(str(log) + ".lock", timeout=1):
-            existing = log.read_text(encoding="utf-8-sig") if log.exists() else ""
-            rows = list(csv.DictReader(io.StringIO(existing))) if existing else []
-            if existing and csv.DictReader(io.StringIO(existing)).fieldnames != LOG_FIELDS:
-                raise SafeSkip("log header is incompatible; choose a new CSV log file")
-            if not any(r["transaction"] == pending["row"]["transaction"] for r in rows):
+        with self.audit_lock(log):
+            rows = read_log(log)
+            matching = [r for r in rows if r["transaction"] == pending["row"]["transaction"]]
+            if matching and matching != [{k: str(v) for k, v in pending["row"].items()}]:
+                raise SafeSkip(
+                    "audit transaction conflicts with the pending journal; restore its backup"
+                )
+            if not matching:
+                if any(r["id"] == pending["row"]["id"] for r in rows):
+                    raise SafeSkip(
+                        "pending ID conflicts with the audit log; preserve the journal for review"
+                    )
                 stream = io.StringIO(newline="")
                 writer = csv.DictWriter(stream, fieldnames=LOG_FIELDS)
                 writer.writeheader()

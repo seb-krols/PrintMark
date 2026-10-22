@@ -8,7 +8,7 @@ print that retains its stamped base can carry its material identity into the rec
 
 Built at the UBC IGEN 3D Print Shop by Sebastians Krols.
 
-**Status: v0.2 lab pilot.** PrintMark is the repository; BaseMark is the application name.
+**Status: v0.3 lab pilot.** PrintMark is the repository; BaseMark is the application name.
 Software verification is separate from physical qualification.
 MK3S and Bambu plain-G-code workflows must be checked with the shop's actual profiles.
 This is not yet a production-qualified printer accessory.
@@ -38,6 +38,26 @@ PrusaSlicer waits for the placement window. Drag the stamp, use **+/−** to res
 **R** to rotate 90°, or choose **Auto place**. **Enter** applies; **Esc** or **Skip label**
 exports unchanged and consumes no ID. Both the footprint and text are shown **from below**.
 The G-code itself contains mirrored text. A missing display falls back to auto placement.
+Automatic placement tries horizontal and 90° orientations at each size before shrinking,
+so tall, narrow parts can retain full-size lettering.
+
+## Find a part from its printed ID
+
+Open **Settings → Find part** and enter the complete ID, such as `A042`. The result shows the
+material, export time, filename, object names, computer and output hash from the saved CSV.
+Search is exact and case-sensitive; prefixes and leading zeros matter. It reads the local log,
+so use the originating PC or a copy of its CSV. It records an export, not proof of a finished print.
+
+```sh
+basemark --lookup A042
+basemark --lookup A042 --json
+basemark --log-file /path/to/copied-log.csv --lookup A042
+```
+
+Lookup does not change files or consume an ID. Exit 0 means found; exit 1 means not found or
+the log could not be read (check stderr). Duplicate legacy records are all displayed explicitly.
+
+![Looking up a printed part in the local audit history](docs/images/find-part.png)
 
 ## Develop or try it from source
 
@@ -113,6 +133,9 @@ The CSV records ID, UTC time, material, final export name when available, object
 hostname, layer count, text height, removed filament length and output SHA-256. A journal
 recovers interruptions between file replacement and counter/log updates. See
 [recovery procedures](docs/recovery.md) before manually altering counter files.
+Before replacing G-code, BaseMark checks that the CSV is readable and the proposed ID is not
+already recorded. Losing/resetting a counter therefore cannot reuse an ID present in that log.
+Keep the history backed up: this check cannot detect IDs from a deleted or different CSV.
 
 The **Diagnostics** tab shows the last export result, checks an original G-code file without
 consuming an ID, and recovers interrupted audits from an exact matching final export.

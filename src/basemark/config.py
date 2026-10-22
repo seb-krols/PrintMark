@@ -75,14 +75,17 @@ class Settings:
         ):
             raise SafeSkip("material_map must map text keys to text values")
         try:
+            placeholders = set()
             for _, key, spec, conv in string.Formatter().parse(self.template):
+                if key is not None:
+                    placeholders.add(key)
                 if key is not None and (
                     key not in {"material", "id", "date", "prefix"} or spec or conv
                 ):
                     raise ValueError("only {material}, {id}, {date}, {prefix} are supported")
         except ValueError as exc:
             raise SafeSkip(f"invalid template: {exc}") from exc
-        if "{material}" not in self.template or "{id}" not in self.template:
+        if not {"material", "id"} <= placeholders:
             raise SafeSkip("template must include {material} and {id}")
         return self
 
@@ -150,7 +153,7 @@ def load_settings(path: Path, notes: str = "", overrides: dict | None = None) ->
     data = {}
     if path.exists():
         try:
-            data = tomllib.loads(path.read_text(encoding="utf-8"))
+            data = tomllib.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
             raise SafeSkip(f"cannot read config {path}: {exc}") from exc
     unknown = data.keys() - {f.name for f in fields(Settings)}
@@ -203,3 +206,16 @@ def validate_paths(config: Path, settings: Settings, *extra: Path | None) -> Non
     resolved = [path.resolve() for path in paths]
     if len(set(resolved)) != len(resolved):
         raise SafeSkip("input, config, counter, log, locks and reports must use different paths")
+    # resolve() detects symlinks, but two names can still be hard links to one file.
+    identities = set()
+    for path in resolved:
+        try:
+            stat = path.stat()
+        except FileNotFoundError:
+            continue
+        identity = (stat.st_dev, stat.st_ino)
+        if identity in identities:
+            raise SafeSkip(
+                "input, config, counter, log, locks and reports must use different paths"
+            )
+        identities.add(identity)

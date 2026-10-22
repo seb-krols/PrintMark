@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -18,14 +19,17 @@ def parser():
     )
     p.add_argument("--version", action="version", version=f"BaseMark {__version__}")
     p.add_argument("--config", type=Path, default=config_dir() / "config.toml")
-    p.add_argument("--settings", action="store_true", help="open the settings window")
-    p.add_argument(
+    action = p.add_mutually_exclusive_group()
+    action.add_argument("--settings", action="store_true", help="open the settings window")
+    action.add_argument("--lookup", metavar="ID", help="find a printed ID in the local CSV log")
+    p.add_argument("--json", action="store_true", help="machine-readable output for --lookup")
+    action.add_argument(
         "--check", action="store_true", help="check a job without stamping; exit 2 if unsupported"
     )
-    p.add_argument(
+    action.add_argument(
         "--recover-from", type=Path, help="recover a pending audit from a matching final export"
     )
-    p.add_argument(
+    action.add_argument(
         "--demo", action="store_true", help="try placement without a printer or G-code file"
     )
     p.add_argument("--off", dest="enabled", action="store_false", default=None)
@@ -45,10 +49,10 @@ def parser():
         "--dry-run", action="store_true", help="inspect only; no file edit or ID consumption"
     )
     p.add_argument("--preview-output", type=Path, help="save an underside SVG of the placement")
-    p.add_argument(
+    action.add_argument(
         "--dump-env", action="store_true", help="write relevant SLIC3R settings; do not stamp"
     )
-    p.add_argument(
+    action.add_argument(
         "--dump-all-env", action="store_true", help="include all SLIC3R keys (may include secrets)"
     )
     p.add_argument("--diagnostics-output", type=Path, help="environment JSON destination")
@@ -56,7 +60,12 @@ def parser():
 
 
 def main(argv=None) -> int:
-    args = parser().parse_args(argv)
+    cli = parser()
+    args = cli.parse_args(argv)
+    if args.json and args.lookup is None:
+        cli.error("--json requires --lookup ID")
+    if args.gcode and (args.lookup is not None or args.recover_from or args.settings or args.demo):
+        cli.error("this action does not accept a G-code argument")
     keys = (
         "enabled",
         "mode",
@@ -80,6 +89,14 @@ def main(argv=None) -> int:
             record_export(args.config, args.gcode, outcome, overrides, dict(os.environ))
 
     try:
+        if args.lookup is not None:
+            from .audit import format_records, lookup_id
+
+            settings = load_settings(args.config, overrides=overrides)
+            _, log = settings.paths(args.config.parent)
+            rows = lookup_id(log, args.lookup)
+            print(json.dumps(rows, indent=2) if args.json else format_records(rows))
+            return 0 if rows else 1
         if args.recover_from:
             from .counter import Counter
 
