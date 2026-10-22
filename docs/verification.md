@@ -80,7 +80,10 @@ more conservative runtime baseline.
   annotations were exposed by the API; Actions is enabled. Local actionlint validation passed.
   See [Windows run](https://github.com/seb-krols/PrintMark/actions/runs/39834938542).
   No native Windows build has succeeded yet. `Runner availability check` is a manual
-  diagnostic with no checkout or third-party actions to isolate runner startup problems.
+  diagnostic with no checkout or third-party actions to isolate runner startup problems;
+  [it also failed before creating a job](https://github.com/seb-krols/PrintMark/actions/runs/39835220914).
+  Both PowerShell scripts pass the native PowerShell parser. Account/Actions access needs
+  investigation in GitHub's signed-in UI; the API does not identify the cause.
 - The owner's exact Windows/PrusaSlicer version and both MK3S and Bambu printer profiles.
 - Interactive export on the actual Windows PCs; no-display fallback on their automation hosts.
 - Manual inspection of the exported file in PrusaSlicer G-code Viewer on the shop PC.

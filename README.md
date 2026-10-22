@@ -118,6 +118,8 @@ The **Diagnostics** tab shows the last export result, checks an original G-code 
 consuming an ID, and recovers interrupted audits from an exact matching final export.
 `basemark --check job.gcode` performs the same compatibility check (exit 2 on unsupported input).
 
+![Export diagnostics and counter recovery](docs/images/diagnostics.png)
+
 `--dump-env` writes relevant slicer variables to `environment.json` beside the config and
 does not stamp. It omits unrelated slicer settings such as host credentials. `--dump-all-env`
 is an explicit full SLIC3R diagnostic dump and **may contain secrets**; review before sharing.

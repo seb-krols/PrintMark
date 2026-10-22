@@ -10,7 +10,7 @@ from tkinter import filedialog, messagebox, ttk
 from .config import Settings, config_dir, load_settings, save_settings, validate_paths
 from .counter import Counter
 from .diagnostics import read_report
-from .ui_common import ACCENT, FONT, MUTED, brand, center, divider, style
+from .ui_common import ACCENT, FONT, MUTED, brand, center, style
 
 
 class SettingsWindow:
@@ -27,6 +27,16 @@ class SettingsWindow:
             "Material identity, printed in.",
             "Set it once. Every export carries your lab’s material and part ID.",
         )
+        # Reserve actions before the expanding notebook, including on small screens.
+        footer = ttk.Frame(root)
+        footer.pack(side="bottom", fill="x", padx=28, pady=18)
+        self.feedback = ttk.Label(footer, text="Settings stay on this computer.", foreground=MUTED)
+        self.feedback.pack(side="left")
+        ttk.Button(footer, text="Save settings  →", style="Accent.TButton", command=self.save).pack(
+            side="right"
+        )
+        ttk.Button(footer, text="Close", command=root.destroy).pack(side="right", padx=10)
+        ttk.Separator(root).pack(side="bottom", fill="x")
         notebook = ttk.Notebook(root)
         notebook.pack(fill="both", expand=True, padx=28, pady=(4, 20))
         general, identity, integration, diagnostics = (
@@ -79,15 +89,6 @@ class SettingsWindow:
         ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(16, 0))
         self.integration(integration)
         self.diagnostics(diagnostics)
-        divider(root)
-        footer = ttk.Frame(root)
-        footer.pack(fill="x", padx=28, pady=18)
-        self.feedback = ttk.Label(footer, text="Settings stay on this computer.", foreground=MUTED)
-        self.feedback.pack(side="left")
-        ttk.Button(footer, text="Save settings  →", style="Accent.TButton", command=self.save).pack(
-            side="right"
-        )
-        ttk.Button(footer, text="Close", command=root.destroy).pack(side="right", padx=10)
         center(root, 860, 760)
 
     def field(self, parent, row, key, label, choices=None):
@@ -151,14 +152,16 @@ class SettingsWindow:
 
     def diagnostics(self, panel):
         ttk.Label(panel, text="Last export", style="Heading.TLabel").pack(anchor="w")
-        self.last_export = ttk.Label(panel, text=read_report(self.path), wraplength=660)
-        self.last_export.pack(fill="x", pady=(10, 16))
-        ttk.Button(
-            panel,
-            text="Refresh result",
-            command=lambda: self.last_export.configure(text=read_report(self.path)),
-        ).pack(anchor="w")
-        ttk.Separator(panel).pack(fill="x", pady=18)
+        report = ttk.Frame(panel)
+        report.pack(fill="x", pady=(8, 8))
+        self.last_export = tk.Text(report, height=4, width=50, wrap="word", font=(FONT, 9))
+        scroll = ttk.Scrollbar(report, orient="vertical", command=self.last_export.yview)
+        scroll.pack(side="right", fill="y")
+        self.last_export.configure(yscrollcommand=scroll.set)
+        self.last_export.pack(side="left", fill="x", expand=True)
+        self.refresh_report()
+        ttk.Button(panel, text="Refresh result", command=self.refresh_report).pack(anchor="w")
+        ttk.Separator(panel).pack(fill="x", pady=10)
         ttk.Label(panel, text="Check a profile without printing", style="Heading.TLabel").pack(
             anchor="w"
         )
@@ -169,7 +172,7 @@ class SettingsWindow:
             foreground=MUTED,
         ).pack(anchor="w", pady=8)
         ttk.Button(panel, text="Check G-code…", command=self.check_file).pack(anchor="w")
-        ttk.Separator(panel).pack(fill="x", pady=18)
+        ttk.Separator(panel).pack(fill="x", pady=10)
         ttk.Label(panel, text="Recover an interrupted export", style="Heading.TLabel").pack(
             anchor="w"
         )
@@ -182,6 +185,12 @@ class SettingsWindow:
         ttk.Button(panel, text="Recover from exported G-code…", command=self.recover_file).pack(
             anchor="w"
         )
+
+    def refresh_report(self):
+        self.last_export.configure(state="normal")
+        self.last_export.delete("1.0", "end")
+        self.last_export.insert("1.0", read_report(self.path))
+        self.last_export.configure(state="disabled")
 
     def check_file(self):
         selected = filedialog.askopenfilename(
