@@ -32,6 +32,16 @@ def parser():
     action.add_argument(
         "--demo", action="store_true", help="try placement without a printer or G-code file"
     )
+    action.add_argument(
+        "--check-prusaslicer",
+        action="store_true",
+        help="check the selected PrusaSlicer presets; exit 2 if something must be fixed",
+    )
+    action.add_argument(
+        "--setup-prusaslicer",
+        action="store_true",
+        help="create and select '+ BaseMark' copies of the selected PrusaSlicer presets",
+    )
     p.add_argument("--off", dest="enabled", action="store_false", default=None)
     p.add_argument("--on", dest="enabled", action="store_true")
     p.add_argument("--mode", choices=["auto", "interactive"])
@@ -75,7 +85,15 @@ def main(argv=None) -> int:
     args = cli.parse_args(argv)
     if args.json and args.lookup is None:
         cli.error("--json requires --lookup ID")
-    if args.gcode and (args.lookup is not None or args.recover_from or args.settings or args.demo):
+    standalone = (
+        args.lookup is not None,
+        args.recover_from,
+        args.settings,
+        args.demo,
+        args.check_prusaslicer,
+        args.setup_prusaslicer,
+    )
+    if args.gcode and any(standalone):
         cli.error("this action does not accept a G-code argument")
     keys = (
         "enabled",
@@ -108,6 +126,19 @@ def main(argv=None) -> int:
             rows = lookup_id(log, args.lookup)
             print(json.dumps(rows, indent=2) if args.json else format_records(rows))
             return 0 if rows else 1
+        if args.check_prusaslicer or args.setup_prusaslicer:
+            from .prusaslicer import SetupError, check, format_findings, hook_command, setup
+
+            command = hook_command(args.config)
+            if args.setup_prusaslicer:
+                try:
+                    print("\n".join(setup(command)))
+                except SetupError as exc:
+                    print(f"BaseMark: PrusaSlicer not changed — {exc}", file=sys.stderr)
+                    return 1
+            findings = check(load_settings(args.config), command)
+            print(format_findings(findings))
+            return 0 if all(f.ok is not False for f in findings) else 2
         if args.recover_from:
             from .counter import Counter
 

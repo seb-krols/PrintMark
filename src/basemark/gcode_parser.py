@@ -170,6 +170,12 @@ def parse(text: str, default_width: float = 0.45, *, retain_layers: int | None =
         if command in {"M117", "M118"}:
             continue
         rest = code[match.end() :]
+        if command == "M486" and rest.lstrip()[:1] == "A":
+            # Firmware object labels (Prusa MK4/XL/MINI profiles): M486 A<name>.
+            name = rest.lstrip()[1:].strip()
+            if name and name not in objects:
+                objects.append(name)
+            continue
         words = WORD.findall(rest)
         residue = WORD.sub("", rest).strip()
         params = {key.upper(): float(value) for key, value in words}

@@ -19,40 +19,44 @@ and sheet with real coupons before routine use. This is not yet a production-qua
 1. While signed in to GitHub with access to this private repository, open
    [**Releases**](https://github.com/seb-krols/PrintMark/releases) and pick the newest
    `BaseMark … Windows pilot`.
-2. Download `basemark-0.3.0-windows-x64-setup.exe` (and optionally its `.sha256`).
+2. Download `basemark-0.3.1-windows-x64-setup.exe` (and optionally its `.sha256`).
 3. Run it. It installs per user to `%LOCALAPPDATA%\Programs\BaseMark` without administrator
    rights and adds **BaseMark Settings** to the Start menu. Python is not needed.
 
 The build is unsigned, so Windows SmartScreen may say *Windows protected your PC*: choose
 **More info → Run anyway** after checking the file came from this repository. To verify it:
-`Get-FileHash .asemark-0.3.0-windows-x64-setup.exe` must match the `.sha256` file.
+`Get-FileHash .\basemark-0.3.1-windows-x64-setup.exe` must match the `.sha256` file.
 A portable ZIP is attached too; keep its `.exe` files and `_internal` folder together.
 
 ## First test with PrusaSlicer (about 10 minutes)
 
 1. **Pick a PC prefix.** Open **BaseMark Settings** from Start. Under **Identity & records**
-   set a unique prefix such as `A`, then **Save settings**.
-2. **Copy the hook.** Open the **PrusaSlicer setup** tab and click **Copy command**.
-3. **Prepare a PrusaSlicer preset.** Switch PrusaSlicer to **Expert** mode, then:
-   - **Print Settings → Output options → Post-processing scripts:** paste the command.
-   - **Print Settings → Advanced → Arc fitting:** `Disabled`.
-   - **Printer Settings → General → Firmware:** untick **Supports binary G-code**
-     (Prusa MK4/MK4S/MK3.9/CORE One/XL/MINI profiles enable it by default).
-   - Save the print and printer presets under new names, e.g. `… + BaseMark`.
-4. **Slice the coupon.** Import `%LOCALAPPDATA%\Programs\BaseMark\examplesasemark-coupon.stl`,
-   slice, and **Export G-code**. The BaseMark window opens: drag the label if you like
-   (**+/−** resize, **R** rotates), then **Enter** to apply or **Esc** to skip.
-5. **Check the result.** In BaseMark Settings → **Diagnostics → Refresh result** you should see
+   set a unique prefix such as `A`, then click **Save settings**.
+2. **Connect PrusaSlicer.** In PrusaSlicer, select the printer and print profile you normally
+   use, then **close PrusaSlicer**. In BaseMark's **PrusaSlicer setup** tab click
+   **Set up PrusaSlicer for me**. It adds `… + BaseMark` copies of those presets with the
+   hook on, arc fitting off and plain (not binary) G-code, and selects them. Your existing
+   presets are not changed. The report underneath must say **Ready**.
+3. **Slice the coupon.** Open PrusaSlicer, import
+   `%LOCALAPPDATA%\Programs\BaseMark\examples\basemark-coupon.stl`, slice, then click
+   **Export G-code**. The BaseMark window opens *during the export* (not when slicing): drag
+   the label if you like (**+/−** resize, **R** rotates), then **Enter** to apply or **Esc**
+   to skip.
+4. **Check the result.** In BaseMark Settings → **Diagnostics → Refresh result** you should see
    `stamped`. Open the exported file in **PrusaSlicer G-code Viewer** (File → G-code preview):
    the first layers show mirrored text-shaped gaps, with a solid layer above.
    The normal slicer preview still shows the toolpaths from before BaseMark.
-6. **Find it again.** **Find part** in settings, enter the printed ID (e.g. `A001`).
-7. **Print it** under normal supervision, then follow the [lab test plan](docs/lab-validation.md).
+5. **Find it again.** **Find part** in settings, enter the printed ID (e.g. `A001`).
+6. **Print it** under normal supervision, then follow the [lab test plan](docs/lab-validation.md).
 
-If the result says *skipped*, the message names the cause: for example `G2 is unsupported`
-(turn off arc fitting) or `binary/packaged G-code` (untick binary G-code). Skipped exports
-are left unchanged and consume no ID. The [installation guide](INSTALL.md) has troubleshooting,
-upgrades and removal.
+**Nothing happened on export?** Click **Check my setup** in the PrusaSlicer setup tab. It
+reads PrusaSlicer's *saved* presets and lists anything still missing. Changes made inside
+PrusaSlicer only count once the preset is saved, and opening a `.3mf` project can switch
+back to the presets stored in that project. If the result says *skipped*, the message names the
+cause: for example `G2 is unsupported` (arc fitting on) or `binary/packaged G-code`.
+Skipped exports are left unchanged and consume no ID. The [installation guide](INSTALL.md)
+covers manual setup, troubleshooting, upgrades and removal. For scripted lab setup:
+`basemark.exe --setup-prusaslicer` / `--check-prusaslicer` (exit 2 = not ready).
 
 ### Tested slicer profiles
 
@@ -216,7 +220,7 @@ and [verification report](docs/verification.md).
 CI is set up to test Windows, macOS and Linux and to build the Windows installer on every
 push, and a version tag stages a **draft** release. GitHub Actions currently stops with
 `startup_failure` before any job starts (see [verification](docs/verification.md)), so pilot
-installers are built locally with `scriptsuild_windows.ps1` and attached to Releases. MIT covers project code; the bundled
+installers are built locally with `scripts\build_windows.ps1` and attached to Releases. MIT covers project code; the bundled
 unmodified Lato Bold font retains its [SIL Open Font License](src/basemark/assets/OFL.txt).
 
 For recognition, publish reproducible test results and real underside photos, then discuss

@@ -87,6 +87,13 @@ Environment: Windows 11 Home 26200 x64, Windows PowerShell 5.1, uv-managed CPyth
   profiles default to binary G-code and arc fitting; with either enabled, BaseMark skips
   with an explicit message (`binary/packaged G-code…`, `G2 is unsupported…`).
 
+- Preset setup (2026-10-23): `--setup-prusaslicer` was run on a copy of a real PrusaSlicer
+  2.7.4 settings folder (MK4 Input Shaper, `0.15mm STRUCTURAL @MK4IS 0.4`). PrusaSlicer
+  2.9.6 then loaded the generated presets **by name** (`--datadir`, `--print-profile`,
+  `--printer-profile`) and ran the installed hook (`Stamped >PLA< T001`). Its embedded
+  config differed from the stock preset only in `arc_fitting`, `post_process`, the preset
+  name and the inheritance chain, which named the stock preset as parent.
+
 This did not involve the GUI's interactive popup inside PrusaSlicer, a lab PC, or a printer.
 
 ## Performance observations

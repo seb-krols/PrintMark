@@ -1,5 +1,17 @@
 # Changes
 
+## 0.3.1 — easier PrusaSlicer setup
+
+- **Set up PrusaSlicer for me** and **Check my setup** in settings (and
+  `--setup-prusaslicer` / `--check-prusaslicer`): BaseMark writes complete
+  `… + BaseMark` copies of the selected print/printer presets (hook on, arc fitting and
+  binary G-code off) and selects them, then lists anything the saved presets still lack.
+- Firmware object labels (`M486 A…`, used by Prusa MK4/XL/MINI profiles) fill the CSV's
+  object names.
+- Settings and placement windows fit the usable screen area (taskbar excluded) and use a
+  compact header on short screens, so Save/Apply stay visible at 150–200% scaling.
+- Release checksum files use LF line endings, so `sha256sum -c` works.
+
 ## 0.3.0 — lab workflow improvements
 
 - Added **Find part** to settings and `--lookup ID [--json]` to the CLI. Searches local or

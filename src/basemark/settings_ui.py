@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import json
-import sys
 import tkinter as tk
 from dataclasses import asdict
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from .audit import format_records, lookup_id
-from .config import Settings, config_dir, load_settings, save_settings, validate_paths
+from .config import Settings, load_settings, save_settings, validate_paths
 from .counter import Counter
 from .diagnostics import read_report
+from .prusaslicer import check, format_findings, hook_command, setup
 from .ui_common import ACCENT, FONT, MUTED, brand, center, style
 
 
@@ -85,7 +85,8 @@ class SettingsWindow:
             identity,
             text="Use a unique prefix for each PC, such as A or B.\n"
             "Empty file paths use this config folder. Keep counters on a local disk.\n"
-            "The counter can move forward; start a new counter file to restart numbering.",
+            "The counter can move forward; start a new counter file to restart numbering.\n"
+            f"Config file: {path}",
             foreground=MUTED,
             wraplength=580,
         ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(16, 0))
@@ -142,48 +143,79 @@ class SettingsWindow:
         entry.grid(row=row, column=1, sticky="ew", pady=9)
 
     def integration(self, panel):
-        ttk.Label(panel, text="01 / Choose plain G-code", style="Heading.TLabel").pack(anchor="w")
+        ttk.Label(panel, text="Connect PrusaSlicer", style="Heading.TLabel").pack(anchor="w")
         ttk.Label(
             panel,
-            text="In PrusaSlicer, use Expert mode and turn off binary G-code.\n"
-            "Disable arc fitting for this first release.",
+            text="Close PrusaSlicer, then click Set up. BaseMark adds “… + BaseMark” copies of "
+            "your selected print and printer presets (hook on, arc fitting and binary G-code "
+            "off) and selects them. Your existing presets are not changed.",
             foreground=MUTED,
-        ).pack(anchor="w", pady=(7, 22))
-        ttk.Label(panel, text="02 / Connect the post-processor", style="Heading.TLabel").pack(
-            anchor="w"
+            wraplength=640,
+        ).pack(anchor="w", pady=(6, 8))
+        buttons = ttk.Frame(panel)
+        buttons.pack(fill="x")
+        ttk.Button(
+            buttons,
+            text="Set up PrusaSlicer for me",
+            style="Accent.TButton",
+            command=self.setup_prusaslicer,
+        ).pack(side="left")
+        ttk.Button(buttons, text="Check my setup", command=self.check_prusaslicer).pack(
+            side="left", padx=10
         )
         ttk.Label(
             panel,
-            text="Print Settings → Output options → Post-processing scripts",
+            text="Then slice and click Export G-code: BaseMark opens before the file is saved.",
             foreground=MUTED,
-        ).pack(anchor="w", pady=(7, 10))
-        executable = Path(sys.executable)
-        if getattr(sys, "frozen", False) and executable.name.lower() == "basemark-desktop.exe":
-            executable = executable.with_name("basemark.exe")
-        command = (
-            f'"{executable}"' if getattr(sys, "frozen", False) else f'"{executable}" -m basemark'
+        ).pack(side="bottom", anchor="w", pady=(8, 0))
+        manual = ttk.Frame(panel)
+        manual.pack(side="bottom", fill="x")
+        self.hook = tk.StringVar(value=hook_command(self.path))
+        ttk.Entry(manual, textvariable=self.hook, state="readonly").pack(
+            side="left", fill="x", expand=True
         )
-        if self.path != config_dir() / "config.toml":
-            command += f' --config "{self.path}"'
-        self.hook = tk.StringVar(value=command)
-        ttk.Entry(panel, textvariable=self.hook, state="readonly").pack(fill="x")
-        ttk.Button(panel, text="Copy command", command=self.copy).pack(anchor="w", pady=10)
-        ttk.Label(panel, text="03 / Try a small coupon", style="Heading.TLabel").pack(
-            anchor="w", pady=(10, 0)
-        )
+        ttk.Button(manual, text="Copy command", command=self.copy).pack(side="right", padx=(10, 0))
         ttk.Label(
             panel,
-            text="Export, place the stamp, then inspect the exported file in G-code Viewer.\n"
-            "Validate readability and adhesion on your lab’s sheets before wider use.",
+            text="Or by hand: paste into Print Settings → Output options → Post-processing "
+            "scripts, then save the preset.",
             foreground=MUTED,
-        ).pack(anchor="w", pady=(7, 20))
-        ttk.Label(
-            panel,
-            text=f"CONFIG FILE\n{self.path}",
-            foreground=ACCENT,
-            wraplength=650,
-            font=(FONT, 9),
-        ).pack(anchor="w")
+            wraplength=640,
+        ).pack(side="bottom", anchor="w", pady=(10, 6))
+        # The report takes whatever height is left, so the manual row stays visible.
+        result = ttk.Frame(panel)
+        result.pack(fill="both", expand=True, pady=(10, 0))
+        self.setup_result = tk.Text(
+            result, height=4, width=50, wrap="word", font=(FONT, 9), state="disabled"
+        )
+        scroll = ttk.Scrollbar(result, orient="vertical", command=self.setup_result.yview)
+        scroll.pack(side="right", fill="y")
+        self.setup_result.configure(yscrollcommand=scroll.set)
+        self.setup_result.pack(side="left", fill="both", expand=True)
+        self.show_setup("Click “Check my setup” to see whether PrusaSlicer is ready.")
+
+    def show_setup(self, text):
+        self.setup_result.configure(state="normal")
+        self.setup_result.delete("1.0", "end")
+        self.setup_result.insert("1.0", text)
+        self.setup_result.configure(state="disabled")
+
+    def check_prusaslicer(self):
+        try:
+            findings = check(load_settings(self.path), self.hook.get())
+            self.show_setup(format_findings(findings))
+        except Exception as exc:
+            self.show_setup(f"Could not check PrusaSlicer: {exc}")
+
+    def setup_prusaslicer(self):
+        try:
+            done = setup(self.hook.get())
+        except Exception as exc:
+            self.show_setup(f"Not changed: {exc}")
+            return
+        report = check(load_settings(self.path), self.hook.get())
+        self.show_setup("\n".join(done) + "\n\n" + format_findings(report))
+        self.feedback.configure(text="PrusaSlicer presets created.", foreground=ACCENT)
 
     def copy(self):
         self.root.clipboard_clear()

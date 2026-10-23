@@ -19,8 +19,8 @@ While signed into the GitHub account with access to this private repository, ope
 [Windows installer build](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml)
 also has a `basemark-windows-x64` artifact with the same files.) The downloads are:
 
-- `basemark-0.3.0-windows-x64-setup.exe`: the recommended per-user installer.
-- `basemark-0.3.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
+- `basemark-0.3.1-windows-x64-setup.exe`: the recommended per-user installer.
+- `basemark-0.3.1-windows-x64.zip`: portable alternative; extract to a permanent local folder.
   Keep `basemark.exe`, `basemark-desktop.exe` and the `_internal` folder together.
 - SHA-256 files for verifying downloads with PowerShell `Get-FileHash`.
 
@@ -37,6 +37,18 @@ Private repository artifacts require GitHub access and expire; keep the tested l
 
 1. Open **BaseMark Settings** from Start (or `basemark-desktop.exe` in the portable folder).
 2. Under **Identity & records**, choose a unique PC prefix: `A`, `B`, etc. Save settings.
+
+**Automatic (recommended):** in PrusaSlicer select the printer and print presets you use,
+close PrusaSlicer, then in **PrusaSlicer setup** click **Set up PrusaSlicer for me**. BaseMark
+writes `… + BaseMark` copies of both presets into PrusaSlicer's settings folder (hook added,
+arc fitting off, binary G-code off), fully resolved from their parents, and selects them.
+Existing presets are untouched; `PrusaSlicer.ini.basemark-backup` keeps the previous
+selection. Repeat for each print preset the lab uses. **Check my setup** reports what the
+saved presets still lack. On the command line: `basemark.exe --setup-prusaslicer` and
+`basemark.exe --check-prusaslicer` (exit 0 ready, 2 needs fixing).
+
+**Manual:**
+
 3. Open **PrusaSlicer setup** and click **Copy command**. This copies the actual installed
    path to `basemark.exe`, including quotes. Use this executable for the slicer hook.
 4. In PrusaSlicer, enable **Expert mode**, then open **Print Settings → Output options →
@@ -101,7 +113,7 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
 
 | Symptom | Action |
 | --- | --- |
-| No popup or marking | Check the selected print preset, master switch and Diagnostics result. A safe skip leaves the export unchanged. |
+| No popup or marking | Click **Check my setup** (PrusaSlicer setup tab). Usually the print preset with the hook was never saved, a different preset or `.3mf` project preset is active, or the job was only sliced, not exported. If Diagnostics shows *skipped*, the reason is listed; a safe skip leaves the export unchanged. |
 | File cannot fit a stamp | Use a larger footprint, adjust size/margin within limits, or skip this part. Holes and sparse bottoms reduce the usable area. |
 | Unsupported command/profile | Run `--dump-env` through the hook once, preserve a small original export and report the skip reason. Restore the normal hook afterward. |
 | Pending audit / missing temporary file | Close Excel if it has the CSV open. Use **Diagnostics → Recover from exported G-code** with the exact surviving stamped file. See [recovery](docs/recovery.md). |

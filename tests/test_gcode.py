@@ -120,6 +120,12 @@ def test_prusa_buddy_firmware_commands_are_untouched(gcode):
     assert "M74 W0.78\n" in result.text and end in result.text
 
 
+def test_firmware_object_labels_name_objects(gcode):
+    labels = "M486 S0\nM486 Abasemark coupon.stl\nM486 S-1\n"
+    program = parse(labels + gcode.replace("; printing object coupon.stl id:0 copy 0\n", ""))
+    assert program.objects == ["basemark coupon.stl"]
+
+
 def test_empty_g92_is_ambiguous(gcode):
     with pytest.raises(SafeSkip, match="G92"):
         parse(gcode.replace("G92 E0", "G92"))
