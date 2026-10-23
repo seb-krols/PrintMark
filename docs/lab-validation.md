@@ -46,7 +46,7 @@ For each specimen, record:
 - Roof quality, droop, ooze, debris and any visible change on the top face.
 - Adhesion/lifting around the label compared with the unstamped control.
 - Effect on thin walls, sealing or mating faces; use **Skip label** when inappropriate.
-- Export time on the Windows PC, including one-file executable startup/antivirus overhead.
+- Export time on the Windows PC, including executable startup/antivirus overhead.
 
 Use [lab-results.csv](../examples/lab-results.csv) as a collection sheet. Photograph the bottom
 beside its recorded ID, plus the unstamped control. Do not substitute renderings for test photos.

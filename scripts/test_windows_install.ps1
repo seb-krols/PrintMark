@@ -2,7 +2,8 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $originalAppData = $env:APPDATA
-$trial = Join-Path $env:RUNNER_TEMP ('BaseMark lab ' + [char]0x00E9 + ' ' + [guid]::NewGuid())
+$scratch = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { $env:TEMP }
+$trial = Join-Path $scratch ('BaseMark lab ' + [char]0x00E9 + ' ' + [guid]::NewGuid())
 $install = Join-Path $trial 'Installed app'
 $env:APPDATA = Join-Path $trial 'User data'
 New-Item $trial -ItemType Directory -Force | Out-Null

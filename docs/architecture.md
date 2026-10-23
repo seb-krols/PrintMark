@@ -15,7 +15,7 @@ selection inside PrusaSlicer avoids another source of truth about what filament 
 | TOML | Hand-editable configuration with an explicit precedence chain and strict validation. |
 | filelock + atomic JSON journal | One local counter with recoverable G-code/log commits. SQLite alone cannot atomically commit a separate G-code file. A small journal makes that failure boundary explicit. |
 | CSV | Portable audit records that a lab lead can inspect in a spreadsheet. Written via atomic replacement to avoid partial rows. |
-| PyInstaller | Native Windows/macOS/Linux builds. Console mode retains stderr for PrusaSlicer errors; a console may briefly appear on Windows. |
+| PyInstaller | Native Windows/macOS/Linux builds. Console mode retains stderr for PrusaSlicer errors; a console may briefly appear on Windows. Windows uses a one-folder build (`scripts/basemark-windows.spec`) because one-file extraction added ~10 s to every export; other platforms ship one file. |
 | pytest + real slicer fixtures | Compare motion and E conservation; test skips, interrupted writes, locking, configuration and the actual Tk interaction model. |
 | uv lockfile | Dependency versions and wheel hashes fixed for CI. This does not make OS-native binaries bit-reproducible. |
 

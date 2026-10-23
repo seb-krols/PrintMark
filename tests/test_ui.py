@@ -14,8 +14,8 @@ def root():
     tk = pytest.importorskip("tkinter")
     try:
         root = tk.Tk()
-    except tk.TclError:
-        pytest.skip("Tk display unavailable")
+    except tk.TclError as exc:
+        pytest.skip(f"Tk display unavailable: {exc}")
     yield root
     try:
         root.destroy()

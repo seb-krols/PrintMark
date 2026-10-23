@@ -6,6 +6,7 @@ dist/
 build/
 *.egg-info/
 *.spec
+!scripts/basemark-windows.spec
 .private/
 *.license.json
 .coverage

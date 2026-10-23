@@ -22,7 +22,11 @@ def main(platform: str):
     if os.environ.get("GITHUB_REF_TYPE") == "tag":
         if os.environ.get("GITHUB_REF_NAME") != f"v{__version__}":
             raise RuntimeError("Release tag must match the package version in pyproject.toml")
-    binary = ROOT / "dist" / ("basemark.exe" if os.name == "nt" else "basemark")
+    # Windows ships a one-folder build (dist/basemark/); other platforms a one-file binary.
+    app_dir = ROOT / "dist" / "basemark"
+    if not app_dir.is_dir():
+        app_dir = ROOT / "dist"
+    binary = app_dir / ("basemark.exe" if os.name == "nt" else "basemark")
     subprocess.run([str(binary), "--version"], check=True, timeout=30)
     with tempfile.TemporaryDirectory(prefix="basemark-smoke-") as folder:
         temp = Path(folder) / "Lab files – test"
@@ -57,8 +61,10 @@ def main(platform: str):
         if len(records) != 1 or records[0]["material"] != "PETG":
             raise RuntimeError("Frozen part-ID lookup did not find the stamped export")
     archive = ROOT / "dist" / f"basemark-{__version__}-{platform}.zip"
+    app_files = [binary]
+    if app_dir != ROOT / "dist":
+        app_files = sorted(p for p in app_dir.rglob("*") if p.is_file())
     files = [
-        binary,
         ROOT / "README.md",
         ROOT / "INSTALL.md",
         ROOT / "CHANGELOG.md",
@@ -69,16 +75,18 @@ def main(platform: str):
         ROOT / "examples/basemark-coupon.stl",
         ROOT / "examples/lab-results.csv",
     ]
-    desktop = ROOT / "dist" / "basemark-desktop.exe"
+    desktop = app_dir / "basemark-desktop.exe"
     if os.name == "nt":
         if not desktop.is_file():
             raise RuntimeError("Windows package requires the desktop settings launcher")
-        files.append(desktop)
+        if desktop not in app_files:
+            app_files.append(desktop)
     files += sorted(p for p in (ROOT / "docs").rglob("*") if p.is_file())
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
+        for path in app_files:
+            bundle.write(path, path.relative_to(app_dir).as_posix())
         for path in files:
-            relative = path.name if path in (binary, desktop) else path.relative_to(ROOT).as_posix()
-            bundle.write(path, relative)
+            bundle.write(path, path.relative_to(ROOT).as_posix())
         for package in ("shapely", "numpy", "fonttools", "tomli-w", "filelock", "pyinstaller"):
             dist = importlib.metadata.distribution(package)
             for entry in dist.files or []:

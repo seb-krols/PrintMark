@@ -24,6 +24,10 @@ WizardStyle=modern
 UninstallDisplayIcon={app}\basemark-desktop.exe
 CloseApplications=yes
 
+[InstallDelete]
+; Replace the shared runtime on upgrade so no stale DLLs from an older build remain.
+Type: filesandordirs; Name: "{app}\_internal"
+
 [Files]
 Source: "..\build\windows-payload\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

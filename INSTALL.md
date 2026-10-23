@@ -4,10 +4,13 @@ BaseMark is the application in the **PrintMark** repository. This pilot targets 
 PrusaSlicer and plain text G-code for the shop's MK3S and Bambu profiles. Python is not needed.
 Printer/profile qualification and physical coupon tests are still required.
 
-**Build status (2026-10-22):** GitHub currently fails before starting the Windows runner.
-The installer source is ready, but there is no successful downloadable Windows artifact yet.
-The steps below apply once the build is unblocked; the source-build command at the end can
-also run on a Windows PC. See the [verification record](docs/verification.md).
+**Build status (2026-10-22):** the Windows installer builds and passes its install, upgrade
+and uninstall checks on a native Windows 11 PC, and real PrusaSlicer 2.7.4 exports with the
+stock MK3S profiles were stamped through it. GitHub Actions still fails before starting
+its runner, so there is no downloadable CI artifact yet. Until that is fixed, build the
+installer on any Windows PC with the [source-build steps](#build-windows-packages-from-source)
+and copy `dist\basemark-0.3.0-windows-x64-setup.exe` to the lab PCs. See the
+[verification record](docs/verification.md).
 
 ## 1. Download and install
 
@@ -18,6 +21,7 @@ artifact at the bottom. Extract that artifact ZIP. It contains:
 
 - `basemark-0.3.0-windows-x64-setup.exe`: the recommended per-user installer.
 - `basemark-0.3.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
+  Keep `basemark.exe`, `basemark-desktop.exe` and the `_internal` folder together.
 - SHA-256 files for verifying downloads with PowerShell `Get-FileHash`.
 
 Run the setup executable. It installs to `%LOCALAPPDATA%\Programs\BaseMark` without
@@ -116,16 +120,27 @@ material settings can identify jobs. `--dump-all-env` may include credentials.
 
 ## Build Windows packages from source
 
-Install Python 3.12, [uv](https://docs.astral.sh/uv/) and
-[Inno Setup 6](https://jrsoftware.org/isinfo.php) on Windows. From the checkout root:
+Install [uv](https://docs.astral.sh/uv/) and [Inno Setup 6](https://jrsoftware.org/isinfo.php)
+on Windows; neither needs administrator rights. uv downloads Python 3.12 itself:
 
 ```powershell
-.\scripts\build_windows.ps1
+winget install --id astral-sh.uv -e --scope user
+winget install --id JRSoftware.InnoSetup -e --scope user
+uv python install 3.12
 ```
 
-This runs tests, builds both standalone executables, verifies frozen stamping, packages
-licenses/docs and compiles the installer into `dist\`. The GitHub workflow additionally
-checks installation to a path with spaces/non-ASCII characters, app launch, upgrade and
-uninstall with counter/log preservation. PyInstaller builds must run on their target OS.
+From the checkout root, in Windows PowerShell or PowerShell 7:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\test_windows_install.ps1
+```
+
+The first command runs lint and tests, builds the one-folder app (`dist\basemark\`),
+verifies frozen stamping and lookup, packages licenses/docs and compiles the installer into
+`dist\`. The second installs to a temporary path with spaces/non-ASCII characters and checks
+stamping, the settings window, upgrade and uninstall with counter/log preservation. It uses a
+temporary `APPDATA`, so real settings and ID history are not touched. PyInstaller builds
+must run on their target OS.
 
 For macOS/Linux source or portable use, see [README](README.md).
