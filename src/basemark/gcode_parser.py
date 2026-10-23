@@ -51,8 +51,17 @@ PASSIVE = {
     "M862",
     "M84",
     "M300",
+    # Prusa Buddy firmware (MK4/MK3.9/MINI/XL): no motion or coordinate effects.
+    "M74",  # print weight for input shaper compensation
+    "M141",  # chamber temperature (CORE One)
+    "M142",  # heatbreak target temperature
+    "M569",  # stepper driver mode
+    "M572",  # pressure advance
+    "M593",  # input shaper parameters
 }
 SETUP_ONLY = {
+    "M555",  # print area bounds used for mesh bed levelling
+    "M591",  # filament-stuck detection setting
     "M115",
     "M92",
     "M301",

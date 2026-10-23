@@ -16,9 +16,13 @@
   one runtime) instead of one-file executables. One-file builds unpacked ~70 MB to `%TEMP%`
   on every export: about 11 s per PrusaSlicer export on the build PC versus 1.6–2.5 s now.
   The installer drops from 59 MB to 23 MB and replaces the runtime folder on upgrade.
+- Prusa Buddy-firmware printers (MK4/MK4S, MK3.9, CORE One, XL, MINI) no longer skip every
+  export: their non-motion start/end commands `M74`, `M141`, `M142`, `M555`, `M569`, `M572`,
+  `M591` and `M593` are now recognised. Stock PrusaSlicer 2.7.4 and 2.9.6 profiles stamp.
+- On Windows, messages written to PrusaSlicer or other pipes are UTF-8 (no garbled `·`/`—`).
 - Windows build scripts work in Windows PowerShell 5.1 and with per-user Inno Setup installs;
   the install test also runs outside GitHub Actions.
-- 132 local tests pass. A native Windows build, install/upgrade/uninstall test and real
+- 133 local tests pass. A native Windows build, install/upgrade/uninstall test and real
   PrusaSlicer 2.7.4 exports with the stock MK3S profiles passed on 2026-10-22. Physical
   printer qualification remains pending.
 

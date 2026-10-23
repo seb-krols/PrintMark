@@ -59,7 +59,18 @@ def parser():
     return p
 
 
+def utf8_pipes():
+    # Windows encodes piped output (PrusaSlicer's hook capture) in the ANSI code page,
+    # which garbles "·"/"—" for UTF-8 readers. Consoles already write Unicode directly.
+    if sys.platform != "win32":
+        return
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and not stream.isatty() and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(argv=None) -> int:
+    utf8_pipes()
     cli = parser()
     args = cli.parse_args(argv)
     if args.json and args.lookup is None:

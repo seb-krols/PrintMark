@@ -4,20 +4,20 @@ BaseMark is the application in the **PrintMark** repository. This pilot targets 
 PrusaSlicer and plain text G-code for the shop's MK3S and Bambu profiles. Python is not needed.
 Printer/profile qualification and physical coupon tests are still required.
 
-**Build status (2026-10-22):** the Windows installer builds and passes its install, upgrade
-and uninstall checks on a native Windows 11 PC, and real PrusaSlicer 2.7.4 exports with the
-stock MK3S profiles were stamped through it. GitHub Actions still fails before starting
-its runner, so there is no downloadable CI artifact yet. Until that is fixed, build the
-installer on any Windows PC with the [source-build steps](#build-windows-packages-from-source)
-and copy `dist\basemark-0.3.0-windows-x64-setup.exe` to the lab PCs. See the
+**Build status (2026-10-23):** the Windows installer is built and tested on a native Windows 11
+PC: install, upgrade and uninstall checks pass, and real PrusaSlicer 2.7.4 and 2.9.6 exports
+with stock Prusa profiles (MK4S, MK4, CORE One, MK3.9, XL, MINI, MK3S) were stamped. GitHub
+Actions still fails before starting its runner, so pilot installers are built locally and
+attached to [Releases](https://github.com/seb-krols/PrintMark/releases). See the
 [verification record](docs/verification.md).
 
 ## 1. Download and install
 
 While signed into the GitHub account with access to this private repository, open
-[Windows installer builds](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml).
-Choose the latest **successful** run on `main`, then download the `basemark-windows-x64`
-artifact at the bottom. Extract that artifact ZIP. It contains:
+[Releases](https://github.com/seb-krols/PrintMark/releases) and pick the newest
+**Windows pilot**. (Once GitHub Actions runs again, every successful
+[Windows installer build](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml)
+also has a `basemark-windows-x64` artifact with the same files.) The downloads are:
 
 - `basemark-0.3.0-windows-x64-setup.exe`: the recommended per-user installer.
 - `basemark-0.3.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
@@ -26,7 +26,8 @@ artifact at the bottom. Extract that artifact ZIP. It contains:
 
 Run the setup executable. It installs to `%LOCALAPPDATA%\Programs\BaseMark` without
 administrator rights and adds **BaseMark Settings** to the Start menu. Builds are currently
-unsigned; Windows may show a publisher warning. Check the download source and checksum.
+unsigned; SmartScreen may say *Windows protected your PC*: choose **More info → Run anyway**
+after checking the download source and checksum.
 If your institution blocks unsigned software, ask its IT administrator about deployment.
 
 Future reviewed versions will appear in [Releases](https://github.com/seb-krols/PrintMark/releases).
@@ -41,7 +42,10 @@ Private repository artifacts require GitHub access and expire; keep the tested l
 4. In PrusaSlicer, enable **Expert mode**, then open **Print Settings → Output options →
    Post-processing scripts**. Paste the command on its own line. Save a copy of the lab's
    print preset with a recognizable name, such as `Lab PLA + BaseMark`.
-5. Use **plain text G-code** and disable **arc fitting**. The first release skips binary
+5. Use **plain text G-code** and disable **arc fitting**: **Print Settings → Advanced → Arc
+   fitting: Disabled**, and for Prusa MK4/MK4S/MK3.9/CORE One/XL/MINI printers untick
+   **Printer Settings → General → Firmware → Supports binary G-code** (on by default there);
+   save that printer preset under a new name too. The first release skips binary
    `.bgcode`, packaged `.gcode.3mf` and arc moves. Use a single filament/tool and at least
    three solid bottom layers for the default two-layer stamp and its roof.
 

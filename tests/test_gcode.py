@@ -109,6 +109,17 @@ def test_prusa_decimal_profile_checks_are_untouched(gcode):
     assert start in result.text
 
 
+def test_prusa_buddy_firmware_commands_are_untouched(gcode):
+    # As emitted by PrusaSlicer's stock MK4(S)/MK3.9/MINI/XL/CORE One start and end G-code.
+    start = "M555 X85 Y81 W80 H44\nM591 S0\nM141 S20\nM569 S0 E\nM572 S0.036\nM142 S36\n"
+    source = start + gcode.replace(";TYPE:Solid infill", "M74 W0.78\n;TYPE:Solid infill", 1)
+    end = "M141 S0\nM572 S0\nM593 X T2 F0\nM569 S1 X Y\n"
+    source = source.replace("M84\n", end + "M84\n")
+    result = rewrite(parse(source), box(30, 20, 40, 25), 2, "001")
+    assert start in result.text
+    assert "M74 W0.78\n" in result.text and end in result.text
+
+
 def test_empty_g92_is_ambiguous(gcode):
     with pytest.raises(SafeSkip, match="G92"):
         parse(gcode.replace("G92 E0", "G92"))

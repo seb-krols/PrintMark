@@ -9,30 +9,64 @@ print that retains its stamped base can carry its material identity into the rec
 Built at the UBC IGEN 3D Print Shop by Sebastians Krols.
 
 **Status: v0.3 lab pilot.** PrintMark is the repository; BaseMark is the application name.
-Software verification is separate from physical qualification.
-MK3S and Bambu plain-G-code workflows must be checked with the shop's actual profiles.
-This is not yet a production-qualified printer accessory.
+Software verification is separate from physical qualification: check every printer, profile
+and sheet with real coupons before routine use. This is not yet a production-qualified tool.
 
 ![BaseMark placement window, showing a stamp from below](docs/images/placement.png)
 
-## Start here
+## Download (Windows)
 
-Windows packaging is implemented; the first GitHub build is currently blocked by a
-`startup_failure` before jobs start. No Windows artifact is available yet. See the
-[verification record](docs/verification.md) for the current evidence.
+1. While signed in to GitHub with access to this private repository, open
+   [**Releases**](https://github.com/seb-krols/PrintMark/releases) and pick the newest
+   `BaseMark … Windows pilot`.
+2. Download `basemark-0.3.0-windows-x64-setup.exe` (and optionally its `.sha256`).
+3. Run it. It installs per user to `%LOCALAPPDATA%\Programs\BaseMark` without administrator
+   rights and adds **BaseMark Settings** to the Start menu. Python is not needed.
 
-1. Download the artifact from the latest successful [Windows build](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml)
-   and run its `basemark-…-setup.exe`. A portable ZIP is also included; neither needs Python.
-2. Open **BaseMark Settings** from Start, assign each PC a unique prefix (`A`, `B`, …), and
-   copy the command from **PrusaSlicer setup** into your print preset's post-processing scripts.
-3. Export a small coupon with plain G-code and arc fitting disabled. Check **Diagnostics**,
-   inspect the final output in G-code Viewer, then qualify it on your printer and sheet.
+The build is unsigned, so Windows SmartScreen may say *Windows protected your PC*: choose
+**More info → Run anyway** after checking the file came from this repository. To verify it:
+`Get-FileHash .asemark-0.3.0-windows-x64-setup.exe` must match the `.sha256` file.
+A portable ZIP is attached too; keep its `.exe` files and `_internal` folder together.
 
-**[Windows installation and troubleshooting guide →](INSTALL.md)**
+## First test with PrusaSlicer (about 10 minutes)
 
-Windows builds include a per-user installer, a quiet settings launcher and a console executable
-for the slicer hook. They are currently unsigned. macOS/Linux portable executables can be
-built by the release workflow; macOS builds are not notarized `.app` bundles.
+1. **Pick a PC prefix.** Open **BaseMark Settings** from Start. Under **Identity & records**
+   set a unique prefix such as `A`, then **Save settings**.
+2. **Copy the hook.** Open the **PrusaSlicer setup** tab and click **Copy command**.
+3. **Prepare a PrusaSlicer preset.** Switch PrusaSlicer to **Expert** mode, then:
+   - **Print Settings → Output options → Post-processing scripts:** paste the command.
+   - **Print Settings → Advanced → Arc fitting:** `Disabled`.
+   - **Printer Settings → General → Firmware:** untick **Supports binary G-code**
+     (Prusa MK4/MK4S/MK3.9/CORE One/XL/MINI profiles enable it by default).
+   - Save the print and printer presets under new names, e.g. `… + BaseMark`.
+4. **Slice the coupon.** Import `%LOCALAPPDATA%\Programs\BaseMark\examplesasemark-coupon.stl`,
+   slice, and **Export G-code**. The BaseMark window opens: drag the label if you like
+   (**+/−** resize, **R** rotates), then **Enter** to apply or **Esc** to skip.
+5. **Check the result.** In BaseMark Settings → **Diagnostics → Refresh result** you should see
+   `stamped`. Open the exported file in **PrusaSlicer G-code Viewer** (File → G-code preview):
+   the first layers show mirrored text-shaped gaps, with a solid layer above.
+   The normal slicer preview still shows the toolpaths from before BaseMark.
+6. **Find it again.** **Find part** in settings, enter the printed ID (e.g. `A001`).
+7. **Print it** under normal supervision, then follow the [lab test plan](docs/lab-validation.md).
+
+If the result says *skipped*, the message names the cause: for example `G2 is unsupported`
+(turn off arc fitting) or `binary/packaged G-code` (untick binary G-code). Skipped exports
+are left unchanged and consume no ID. The [installation guide](INSTALL.md) has troubleshooting,
+upgrades and removal.
+
+### Tested slicer profiles
+
+Software checks with the coupon (plain G-code, arc fitting off) through the real slicer:
+
+| PrusaSlicer | Stock printer profiles that stamp |
+| --- | --- |
+| 2.9.6 | MK4S (PLA, PETG), CORE One, MK4 Input Shaper, MK3.9S, XL Input Shaper (single tool), MINI Input Shaper, i3 MK3S |
+| 2.7.4 | MK4 / MK4 Input Shaper (PLA, PETG), MK3.9, XL, MINI, i3 MK3S (PLA, PETG; through the installed hook) |
+| 2.8.1 | Regression fixtures and i3 MK3S hook (Linux) |
+
+Bambu printer profiles have not been tested yet. None of this replaces printing coupons.
+
+## Placement window
 
 PrusaSlicer waits for the placement window. Drag the stamp, use **+/−** to resize,
 **R** to rotate 90°, or choose **Auto place**. **Enter** applies; **Esc** or **Skip label**
@@ -179,9 +213,10 @@ No cloud service, database server, telemetry or accounts are needed. Read the
 [architecture decisions](docs/architecture.md), [lab test plan](docs/lab-validation.md),
 and [verification report](docs/verification.md).
 
-CI tests Windows, macOS and Linux. Every main-branch push builds and tests a Windows installer.
-A version tag builds portable executables with PyInstaller
-and stages a **draft** GitHub release for review. MIT covers project code; the bundled
+CI is set up to test Windows, macOS and Linux and to build the Windows installer on every
+push, and a version tag stages a **draft** release. GitHub Actions currently stops with
+`startup_failure` before any job starts (see [verification](docs/verification.md)), so pilot
+installers are built locally with `scriptsuild_windows.ps1` and attached to Releases. MIT covers project code; the bundled
 unmodified Lato Bold font retains its [SIL Open Font License](src/basemark/assets/OFL.txt).
 
 For recognition, publish reproducible test results and real underside photos, then discuss

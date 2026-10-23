@@ -10,7 +10,8 @@ Environment: Linux x86-64, Python 3.12.15; desktop interaction also exercised wi
 that build only exposed the fixed bitmap font on this machine, so native Tk 8.6 was used to
 inspect typography and capture the actual UI screenshots. No desktop configuration was changed.
 
-Latest automated run: **132 passing tests, 89% statement coverage**. Coverage is
+Latest automated run (Windows, 2026-10-23): **133 tests, 88% statement coverage** (one Tk
+test skipped intermittently on that PC; see below). Coverage is
 a description of exercised code, not a claim of complete safety or printer qualification.
 
 - Automated tests cover relative/absolute E, relative XYZ, G92, retraction conservation,
@@ -60,7 +61,7 @@ This exercised the hook and profile syntax, not the MK3S hardware or firmware.
 Environment: Windows 11 Home 26200 x64, Windows PowerShell 5.1, uv-managed CPython 3.12.13
 (Tk 8.6.12), Inno Setup 6.7.3, PrusaSlicer `2.7.4+win64-202404050928`.
 
-- `scripts/build_windows.ps1` passed: ruff, 132 tests (one Tk test can skip intermittently
+- `scripts/build_windows.ps1` passed: ruff, 133 tests (one Tk test can skip intermittently
   on this PC when Tcl transiently cannot read its own script files; the reason is printed),
   one-folder PyInstaller build, frozen stamping/lookup smoke test, ZIP and installer.
 - `scripts/test_windows_install.ps1` passed: silent install to a path with spaces and `é`,
@@ -76,6 +77,15 @@ Environment: Windows 11 Home 26200 x64, Windows PowerShell 5.1, uv-managed CPyth
 - Startup: the earlier one-file executables took ~9.5 s for `--version` and ~11 s per
   export on this PC because each launch unpacked the runtime to `%TEMP%`. The one-folder
   build adds **1.6–2.5 s** per PrusaSlicer export (source run of the same check: 1.9 s).
+
+- Prusa Buddy-firmware profiles first skipped every export on unrecognised setup commands
+  (`M555` etc.). After allowing the non-motion commands `M74`, `M141`, `M142`, `M555`,
+  `M569`, `M572`, `M591` and `M593`, the coupon was sliced and stamped (copies, auto mode)
+  with stock profiles from **PrusaSlicer 2.9.6** (portable build): MK4S PLA and PETG,
+  CORE One, MK4 Input Shaper, MK3.9S, XL Input Shaper, MINI Input Shaper and i3 MK3S.
+  With PrusaSlicer 2.7.4: MK4 Input Shaper (PLA, PETG), MK4, MK3.9, XL and MINI. These
+  profiles default to binary G-code and arc fitting; with either enabled, BaseMark skips
+  with an explicit message (`binary/packaged G-code…`, `G2 is unsupported…`).
 
 This did not involve the GUI's interactive popup inside PrusaSlicer, a lab PC, or a printer.
 
