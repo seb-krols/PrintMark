@@ -40,7 +40,8 @@ try {
     Invoke-Checked $compiler @("/DAppVersion=$version", "scripts/windows_installer.iss")
     $setup = "dist/basemark-$version-windows-x64-setup.exe"
     $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
-    "$hash  $(Split-Path $setup -Leaf)" | Set-Content "$setup.sha256" -Encoding ascii
+    # LF endings so `sha256sum -c` also works on macOS/Linux.
+    [IO.File]::WriteAllText((Join-Path (Get-Location) "$setup.sha256"), "$hash  $(Split-Path $setup -Leaf)`n")
     Write-Host "Built and verified portable ZIP and installer in dist/"
 } finally {
     Pop-Location

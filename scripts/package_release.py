@@ -95,7 +95,8 @@ def main(platform: str):
         for path in sorted((ROOT / "licenses").glob("*")):
             bundle.write(path, f"licenses/{path.name}")
     sha = hashlib.sha256(archive.read_bytes()).hexdigest()
-    archive.with_suffix(".sha256").write_text(f"{sha}  {archive.name}\n", encoding="ascii")
+    # LF endings so `sha256sum -c` also works on macOS/Linux.
+    archive.with_suffix(".sha256").write_bytes(f"{sha}  {archive.name}\n".encode("ascii"))
     print(f"Verified and packaged {archive.name}")
 
 
