@@ -337,7 +337,8 @@ class SettingsWindow:
             if not report:
                 ttk.Label(
                     self.history,
-                    text="Nothing yet. Slice a part in PrusaSlicer and click Export G-code.",
+                    text="Nothing yet. BaseMark runs when you click Export G-code in PrusaSlicer, "
+                    "not when you slice.",
                     style="Card.Muted.TLabel",
                 ).pack(anchor="w", pady=ui.px(6))
             return
@@ -378,7 +379,8 @@ class SettingsWindow:
             self.render_status(
                 True,
                 "Ready to stamp",
-                "PrusaSlicer runs BaseMark on every export with the presets below.",
+                "In PrusaSlicer, slice, then click Export G-code (Ctrl+G) or Send to printer. "
+                "BaseMark runs during the export; slicing alone does not start it.",
                 details,
             )
         else:
@@ -419,7 +421,7 @@ class SettingsWindow:
             messagebox.showwarning("PrusaSlicer was not changed", str(exc), parent=self.root)
             return
         self.refresh_status()
-        self.say(done[0] + " Open PrusaSlicer, slice and click Export G-code.", "ok")
+        self.say(done[0] + " Open PrusaSlicer, slice, then click Export G-code.", "ok")
 
     # ---------- stamp ----------
 

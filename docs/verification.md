@@ -100,6 +100,14 @@ Environment: Windows 11 Home 26200 x64, Windows PowerShell 5.1, uv-managed CPyth
 
 This did not involve the GUI's interactive popup inside PrusaSlicer, a lab PC, or a printer.
 
+- Pipeline check on the pilot PC (2026-10-24): a copy of the real PrusaSlicer settings
+  (selected `0.15mm STRUCTURAL @MK4IS 0.4 + BaseMark` and `…MK4 Input Shaper 0.4 nozzle +
+  Basemark` presets, `Generic PLA @PGIS`), the installed PrusaSlicer 2.7.4 and the installed
+  BaseMark 0.4.0 exported the coupon: automatic mode stamped `>PLA< T001` with slicing
+  and stamping together taking 2.4 s; interactive mode opened the export window after
+  3.6 s (visible, not minimized) and stamped after the operator applied it. A reported
+  “nothing happened” had no export: the part was sliced but **Export G-code** was not used.
+
 ## Performance observations
 
 Representative single-run core timings on this development machine, using real generated

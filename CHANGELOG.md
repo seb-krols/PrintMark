@@ -1,5 +1,12 @@
 # Changes
 
+## 0.4.1 — clearer export step
+
+- The Overview says that BaseMark runs on **Export G-code** (Ctrl+G) or **Send to
+  printer**, not when slicing; slicing without exporting looked like a broken setup.
+- The export window takes keyboard focus when Windows would otherwise keep it behind
+  another app, and flashes its taskbar button if it still cannot.
+
 ## 0.4.0 — redesigned app
 
 - New BaseMark app layout with a sidebar: **Overview** (PrusaSlicer status with one-click

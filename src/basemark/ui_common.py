@@ -335,6 +335,32 @@ def center(root, width, height):
     root.geometry(f"{width}x{height}+{x}+{y}")
 
 
+def bring_to_front(user32, hwnd):
+    """Take keyboard focus even though Windows' foreground lock refuses a plain request.
+
+    A window opened by a background process (the slicer's post-processing step) is
+    usually denied the foreground, so Enter/Esc would go to another app. Attaching to
+    the foreground thread's input is the documented way around that; if it still fails,
+    flash the taskbar button so the waiting window is noticed.
+    """
+    user32.SetForegroundWindow(hwnd)
+    current = user32.GetForegroundWindow()
+    if current == hwnd:
+        return
+    import ctypes
+
+    ours = ctypes.windll.kernel32.GetCurrentThreadId()
+    theirs = user32.GetWindowThreadProcessId(current, None)
+    if theirs and theirs != ours and user32.AttachThreadInput(ours, theirs, True):
+        try:
+            user32.BringWindowToTop(hwnd)
+            user32.SetForegroundWindow(hwnd)
+        finally:
+            user32.AttachThreadInput(ours, theirs, False)
+    if user32.GetForegroundWindow() != hwnd:
+        user32.FlashWindow(hwnd, True)
+
+
 def keep_visible(root, interval_ms=1500):
     """Keep a blocking window on screen: PrusaSlicer waits until the operator decides.
 
@@ -353,7 +379,7 @@ def keep_visible(root, interval_ms=1500):
                 user32 = ctypes.windll.user32
                 hwnd = user32.GetParent(root.winfo_id()) or root.winfo_id()
                 user32.ShowWindow(hwnd, 9 if user32.IsIconic(hwnd) else 5)  # RESTORE / SHOW
-                user32.SetForegroundWindow(hwnd)
+                bring_to_front(user32, hwnd)
             except (AttributeError, OSError):
                 pass
         root.focus_force()

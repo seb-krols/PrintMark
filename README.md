@@ -19,13 +19,13 @@ and sheet with real coupons before routine use. This is not yet a production-qua
 1. While signed in to GitHub with access to this private repository, open
    [**Releases**](https://github.com/seb-krols/PrintMark/releases) and pick the newest
    `BaseMark … Windows pilot`.
-2. Download `basemark-0.4.0-windows-x64-setup.exe` (and optionally its `.sha256`).
+2. Download `basemark-0.4.1-windows-x64-setup.exe` (and optionally its `.sha256`).
 3. Run it. It installs per user to `%LOCALAPPDATA%\Programs\BaseMark` without administrator
    rights and adds **BaseMark** to the Start menu. Python is not needed.
 
 The build is unsigned, so Windows SmartScreen may say *Windows protected your PC*: choose
 **More info → Run anyway** after checking the file came from this repository. To verify it:
-`Get-FileHash .\basemark-0.4.0-windows-x64-setup.exe` must match the `.sha256` file.
+`Get-FileHash .\basemark-0.4.1-windows-x64-setup.exe` must match the `.sha256` file.
 A portable ZIP is attached too; keep its `.exe` files and `_internal` folder together.
 
 ## First test with PrusaSlicer (about 10 minutes)
@@ -49,7 +49,9 @@ A portable ZIP is attached too; keep its `.exe` files and `_internal` folder tog
 5. **Find it again.** **Find part**, then enter the printed ID (e.g. `A001`).
 6. **Print it** under normal supervision, then follow the [lab test plan](docs/lab-validation.md).
 
-**Nothing happened on export?** Click **Check again** on the Overview. It reads PrusaSlicer's
+**Nothing happened?** Slicing alone does not run BaseMark: it runs only when you click
+**Export G-code** (Ctrl+G) or **Send to printer**. If it still does nothing, click
+**Check again** on the Overview. It reads PrusaSlicer's
 *saved* presets and lists anything still missing. Changes made inside
 PrusaSlicer only count once the preset is saved, and opening a `.3mf` project can switch
 back to the presets stored in that project. If the result says *skipped*, the message names the
