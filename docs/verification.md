@@ -93,6 +93,10 @@ Environment: Windows 11 Home 26200 x64, Windows PowerShell 5.1, uv-managed CPyth
   `--printer-profile`) and ran the installed hook (`Stamped >PLA< T001`). Its embedded
   config differed from the stock preset only in `arc_fitting`, `post_process`, the preset
   name and the inheritance chain, which named the stock preset as parent.
+- With the setup applied to the real settings (copied for the test), PrusaSlicer 2.9.6
+  exported the coupon in interactive mode. The placement window appeared on top, was later
+  found minimized while PrusaSlicer waited (fixed in 0.4.0), and once restored and applied it
+  produced `Stamped >PLA< 001` with the object name taken from `M486` labels.
 
 This did not involve the GUI's interactive popup inside PrusaSlicer, a lab PC, or a printer.
 

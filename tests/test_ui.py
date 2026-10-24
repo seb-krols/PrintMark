@@ -52,6 +52,20 @@ def test_placement_drag_resize_rotate_invalid_accept_and_skip(root):
     assert app.result is None
 
 
+def test_minimized_placement_window_is_restored(root):
+    from basemark.popup import PlacementWindow
+
+    footprint, surface, placed, settings = demo_data()
+    app = PlacementWindow(root, footprint, surface, placed, settings, "PETG", "A042")
+    root.update()
+    root.iconify()
+    root.update()
+    app.keep_visible()
+    root.update()
+    assert root.state() != "iconic"
+    app.skip()
+
+
 def test_placement_accept(root):
     from basemark.popup import PlacementWindow
 
@@ -117,9 +131,9 @@ def test_find_part_displays_export_without_consuming_id(root, tmp_path, job_file
     app = SettingsWindow(root, config)
     app.lookup_value.set("A001")
     app.find_part()
-    assert "A001 · PLA" in app.lookup_result.get("1.0", "end")
-    assert str(job_file) in app.lookup_result.get("1.0", "end")
+    assert "A001 · PLA" in app.lookup_summary
+    assert str(job_file) in app.lookup_summary
     app.lookup_value.set("A999")
     app.find_part()
-    assert "No matching ID" in app.lookup_result.get("1.0", "end")
+    assert "No matching ID" in app.lookup_summary
     assert (tmp_path / "counter.json").read_bytes() == before

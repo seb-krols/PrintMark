@@ -22,7 +22,7 @@ destination and then removes the temporary file. The journal retains the final n
 
 ## Missing temporary file / unresolved transaction
 
-Open **Settings → Diagnostics → Recover from exported G-code** and select the surviving
+Open **BaseMark → Advanced → Recover an interrupted export** and select the surviving
 stamped export. BaseMark requires an exact SHA-256 match, then records the original result
 and advances the counter without modifying the selected file. A mismatch preserves the journal.
 The CLI equivalent is `basemark --recover-from "path/to/final.gcode"` (plus `--config` if used).
@@ -46,7 +46,7 @@ For a fresh numbering series, choose a new prefix and a new local counter file.
 
 Before changing G-code, BaseMark checks the selected CSV for the proposed ID. If the ID
 already exists, the export is skipped unchanged. Restore a trusted counter backup or set
-**Identity & records → Next ID number** above the highest used number for that series.
+**Advanced → Next ID number** above the highest used number for that series.
 Review the entire history, including archived logs, when choosing a number. Do not delete
 the audit log to bypass this check. If both counter and history are lost, start a distinct
 prefix/series; the software cannot reconstruct IDs from parts already in the lab.

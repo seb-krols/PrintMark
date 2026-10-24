@@ -237,7 +237,11 @@ def check(settings: Settings, command: str, data: Path | None = None) -> list[Fi
             findings.append(Finding(False, f"{where} runs a missing program: {exe}"))
         elif hooks[0] != command:
             findings.append(
-                Finding(None, f"{where} runs BaseMark with: {hooks[0]}\nThis install: {command}")
+                Finding(
+                    None,
+                    f"{where} runs a different BaseMark copy ({exe}). Set up PrusaSlicer again "
+                    "to use this one.",
+                )
             )
         else:
             findings.append(Finding(True, f"{where} runs BaseMark after export."))
@@ -278,7 +282,10 @@ def check(settings: Settings, command: str, data: Path | None = None) -> list[Fi
         findings.append(Finding(False, "BaseMark stamping is switched off (Stamp tab)."))
     if not settings.counter_prefix:
         findings.append(
-            Finding(None, "No computer prefix is set (Identity & records): IDs look like 001.")
+            Finding(
+                None,
+                "No computer prefix is set, so IDs look like 001. Set one so PCs never share IDs.",
+            )
         )
     return findings
 

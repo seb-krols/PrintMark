@@ -5,125 +5,150 @@ import tkinter as tk
 from dataclasses import replace
 from tkinter import ttk
 
+from . import ui_common as ui
 from .footprint import polygons
 from .placement import auto_place
-from .ui_common import ACCENT, BG, DANGER, FONT, INK, LINE, MUTED, brand, center, divider, style
 
 
 class PlacementWindow:
+    """Shown during a PrusaSlicer export: confirm or adjust where the label goes."""
+
     def __init__(
-        self, root, footprint, surface, placed, settings, material, part_id, *, demo=False
+        self,
+        root,
+        footprint,
+        surface,
+        placed,
+        settings,
+        material,
+        part_id,
+        job_name="",
+        *,
+        demo=False,
     ):
         self.root, self.footprint, self.surface = root, footprint, surface
         self.placed, self.initial, self.settings = placed, placed, settings
         self.result = None
         self.drag_anchor = None
         self.demo = demo
-        root.title("BaseMark · Place your stamp" + (" · Demo" if demo else ""))
-        root.minsize(820, 590)
-        style(root)
-        brand(
-            root,
-            "PLACEMENT / DEMO" if demo else "PLACEMENT / EXPORT",
-            "Give this part an identity.",
-            "A small mark on the bottom. A material you can identify long after printing.",
-        )
-        divider(root)
-        body = ttk.Frame(root)
-        body.pack(fill="both", expand=True, padx=28, pady=20)
-        body.columnconfigure(0, weight=1)
-        body.rowconfigure(0, weight=1)
-        drawing = ttk.Frame(body)
-        drawing.grid(row=0, column=0, sticky="nsew", padx=(0, 22))
-        self.canvas = tk.Canvas(
-            drawing,
-            background="#ecefe9",
-            highlightthickness=1,
-            highlightbackground=LINE,
-            cursor="hand2",
-        )
-        self.canvas.pack(fill="both", expand=True)
+        root.title("BaseMark · Stamp this export" + (" (demo)" if demo else ""))
+        ui.style(root)
+        root.minsize(ui.px(760), ui.px(520))
+        px = ui.px
+
+        header = ttk.Frame(root, padding=(px(24), px(16), px(24), px(12)))
+        header.pack(fill="x")
         ttk.Label(
-            drawing,
-            text="UNDERSIDE VIEW    •    Dimensions in mm    •    Drag the stamp to move",
-            font=(FONT, 9),
-            foreground=MUTED,
-        ).pack(anchor="w", pady=(10, 0))
-        sidebar = ttk.Frame(body, width=240)
-        sidebar.grid(row=0, column=1, sticky="ns")
-        sidebar.grid_propagate(False)
-        ttk.Label(sidebar, text="YOUR STAMP", foreground=MUTED, font=(FONT, 9, "bold")).pack(
-            anchor="w"
-        )
-        ttk.Label(sidebar, text=placed.text, font=(FONT, 18, "bold"), wraplength=235).pack(
-            anchor="w", pady=(10, 14)
-        )
-        for label, value in [
-            ("Material", material),
-            ("Part ID", part_id),
-            ("Depth", f"{settings.layers} layers"),
-            ("Edge margin", f"{settings.margin_mm:g} mm"),
-        ]:
-            row = ttk.Frame(sidebar)
-            row.pack(fill="x", pady=4)
-            ttk.Label(row, text=label, foreground=MUTED).pack(side="left")
-            ttk.Label(row, text=value, font=(FONT, 10, "bold")).pack(side="right")
-        ttk.Separator(sidebar).pack(fill="x", pady=12)
-        ttk.Label(sidebar, text="Text height", style="Heading.TLabel").pack(anchor="w")
-        sizing = ttk.Frame(sidebar)
-        sizing.pack(fill="x", pady=(8, 10))
-        ttk.Button(sizing, text="−", width=3, command=lambda: self.resize(-0.5)).pack(side="left")
-        self.height_label = ttk.Label(sizing, text="", anchor="center", width=10)
-        self.height_label.pack(side="left", expand=True)
-        ttk.Button(sizing, text="+", width=3, command=lambda: self.resize(0.5)).pack(side="right")
-        ttk.Button(sidebar, text="↻  Rotate 90°", command=self.rotate).pack(fill="x", pady=(0, 8))
-        ttk.Button(sidebar, text="Auto place", command=self.auto).pack(fill="x")
-        self.status = ttk.Label(sidebar, text="", wraplength=235, font=(FONT, 10, "bold"))
-        self.status.pack(anchor="w", pady=(14, 7))
-        ttk.Label(
-            sidebar,
-            text="Text is shown as you’ll read it from underneath. The toolpath is "
-            "mirrored automatically.",
-            wraplength=235,
-            foreground=MUTED,
+            header,
+            text="DEMO · NOTHING IS SAVED" if demo else "PRUSASLICER EXPORT",
+            style="Eyebrow.TLabel",
         ).pack(anchor="w")
-        separator = tk.Frame(root, background=LINE, height=1)
-        separator.pack(side="bottom", fill="x", before=body)
-        footer = ttk.Frame(root)
-        footer.pack(side="bottom", fill="x", padx=28, pady=18, before=separator)
+        ttk.Label(header, text="Stamp this export", style="Title.TLabel").pack(anchor="w")
+        details = [material, f"ID {part_id}"] + ([job_name] if job_name else [])
+        ttk.Label(header, text="   ·   ".join(details), style="Muted.TLabel").pack(anchor="w")
+
+        footer = ttk.Frame(root, padding=(px(24), px(12), px(24), px(16)))
+        footer.pack(side="bottom", fill="x")
+        tk.Frame(root, background=ui.LINE, height=1).pack(side="bottom", fill="x")
         ttk.Label(
             footer,
-            text="Demo only · no file or counter changes"
-            if demo
-            else "Sealing face or delicate part? Skip this label.",
-            foreground=MUTED,
+            text="Enter apply  ·  Esc skip  ·  R rotate  ·  + / − size",
+            style="Small.TLabel",
         ).pack(side="left")
         self.ok = ttk.Button(
             footer,
-            text="Close preview" if demo else "Apply stamp  →",
-            style="Accent.TButton",
+            text="Close demo" if demo else "Apply stamp",
+            style="Big.Accent.TButton",
             command=self.accept,
         )
-        self.ok.pack(side="right", padx=(10, 0))
-        ttk.Button(footer, text="Skip label", command=self.skip).pack(side="right")
+        self.ok.pack(side="right")
+        ttk.Button(footer, text="Skip label", style="Big.TButton", command=self.skip).pack(
+            side="right", padx=(0, px(10))
+        )
+
+        body = ttk.Frame(root, padding=(px(24), 0, px(24), px(16)))
+        body.pack(fill="both", expand=True)
+        body.columnconfigure(0, weight=1)
+        body.rowconfigure(0, weight=1)
+
+        view = tk.Frame(
+            body, background=ui.CANVAS, highlightthickness=1, highlightbackground=ui.LINE
+        )
+        view.grid(row=0, column=0, sticky="nsew", padx=(0, px(16)))
+        self.canvas = tk.Canvas(view, background=ui.CANVAS, highlightthickness=0, cursor="fleur")
+        self.canvas.pack(fill="both", expand=True)
+
+        side_frame, side = ui.card(body)
+        side_frame.grid(row=0, column=1, sticky="ns")
+        side_frame.configure(width=px(270))
+        side_frame.pack_propagate(False)
+        ttk.Label(side, text="LABEL", style="Card.Eyebrow.TLabel").pack(anchor="w")
+        tk.Label(
+            side,
+            text=placed.text,
+            font=(ui.SEMIBOLD, 17),
+            foreground=ui.INK,
+            background=ui.PANEL,
+            wraplength=px(230),
+            justify="left",
+        ).pack(anchor="w", pady=(px(2), px(10)))
+        self.status = tk.Label(
+            side, text="", font=(ui.SEMIBOLD, 10), padx=px(10), pady=px(5), anchor="w"
+        )
+        self.status.pack(fill="x", pady=(0, px(16)))
+
+        ttk.Label(side, text="TEXT HEIGHT", style="Card.Eyebrow.TLabel").pack(anchor="w")
+        sizing = ttk.Frame(side, style="Card.TFrame")
+        sizing.pack(fill="x", pady=(px(6), px(14)))
+        ttk.Button(sizing, text="−", width=3, command=lambda: self.resize(-0.5)).pack(side="left")
+        self.height_label = ttk.Label(
+            sizing, text="", style="Value.TLabel", anchor="center", font=(ui.SEMIBOLD, 12)
+        )
+        self.height_label.pack(side="left", fill="x", expand=True)
+        ttk.Button(sizing, text="+", width=3, command=lambda: self.resize(0.5)).pack(side="right")
+
+        ttk.Button(side, text="↻  Rotate 90°", command=self.rotate).pack(fill="x")
+        ttk.Button(side, text="Auto place", command=self.auto).pack(fill="x", pady=(px(8), 0))
+
+        ttk.Separator(side).pack(fill="x", pady=px(16))
+        for label, value in [
+            ("Depth", f"{settings.layers} layer{'s' if settings.layers != 1 else ''}"),
+            ("Edge margin", f"{settings.margin_mm:g} mm"),
+        ]:
+            row = ttk.Frame(side, style="Card.TFrame")
+            row.pack(fill="x", pady=px(2))
+            ttk.Label(row, text=label, style="Card.Muted.TLabel").pack(side="left")
+            ttk.Label(row, text=value, style="Value.TLabel").pack(side="right")
+        ttk.Label(
+            side,
+            text="Viewed from underneath, as you will read it on the part. The toolpath is "
+            "mirrored automatically.",
+            style="Card.Small.TLabel",
+            wraplength=px(230),
+        ).pack(anchor="w", pady=(px(12), 0))
+
         self.canvas.bind("<Configure>", self.draw)
         self.canvas.bind("<ButtonPress-1>", self.start_drag)
         self.canvas.bind("<B1-Motion>", self.drag)
         self.canvas.bind("<ButtonRelease-1>", lambda _: setattr(self, "drag_anchor", None))
         root.bind("<Return>", lambda _: self.accept())
+        root.bind("<KP_Enter>", lambda _: self.accept())
         root.bind("<Escape>", lambda _: self.skip())
-        root.bind("<Key-plus>", lambda _: self.resize(0.5))
-        root.bind("<Key-equal>", lambda _: self.resize(0.5))
-        root.bind("<Key-minus>", lambda _: self.resize(-0.5))
+        for key in ("<Key-plus>", "<Key-equal>", "<KP_Add>"):
+            root.bind(key, lambda _: self.resize(0.5))
+        for key in ("<Key-minus>", "<KP_Subtract>"):
+            root.bind(key, lambda _: self.resize(-0.5))
         root.bind("<Key-r>", lambda _: self.rotate())
+        root.bind("<Key-a>", lambda _: self.auto())
         root.protocol("WM_DELETE_WINDOW", self.skip)
-        center(root, 1080, 740)
-        root.attributes("-topmost", True)
+        ui.center(root, 1040, 700)
+        self.keep_visible = ui.keep_visible(root)
 
     def transform(self):
         left, bottom, right, top = self.footprint.bounds
         w, h = max(self.canvas.winfo_width(), 100), max(self.canvas.winfo_height(), 100)
-        scale = min((w - 80) / (right - left), (h - 80) / (top - bottom))
+        margin = ui.px(56)
+        scale = min((w - 2 * margin) / (right - left), (h - 2 * margin) / (top - bottom))
         return scale, (left + right) / 2, (bottom + top) / 2, w / 2, h / 2
 
     def screen(self, x, y):
@@ -143,34 +168,58 @@ class PlacementWindow:
                 self.canvas.create_polygon(coords, fill=holes, outline=outline, width=1)
 
     def draw(self, _event=None):
-        self.canvas.delete("all")
-        w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
-        for x in range(16, w, 24):
-            for y in range(16, h, 24):
-                self.canvas.create_oval(x, y, x + 1, y + 1, fill="#cdd6cc", outline="")
-        self.geometry(self.footprint, "#d3dcd2", "#ecefe9", "#9caca0")
-        self.geometry(self.surface, "#e4eae0", "#d3dcd2")
-        # The eroded region's holes are wider than the real part's holes. Restore
-        # actual voids after drawing the margin band so they cannot look solid.
+        px, c = ui.px, self.canvas
+        c.delete("all")
+        w, h = c.winfo_width(), c.winfo_height()
+        step = px(24)
+        for x in range(step // 2, w, step):
+            for y in range(step // 2, h, step):
+                c.create_rectangle(x, y, x + 1, y + 1, fill="#d4dad3", outline="")
+        # Part outline, then the safe area inside the edge margin.
+        self.geometry(self.footprint, "#d7ded5", ui.CANVAS, "#a9b5ab")
+        self.geometry(self.surface, "#f9faf8", "#d7ded5")
+        # The eroded region's holes are wider than the real part's holes. Restore actual
+        # voids after drawing the margin band so they cannot look solid.
         for poly in polygons(self.footprint):
             for ring in poly.interiors:
                 coords = [v for x, y in ring.coords for v in self.screen(x, y)]
-                self.canvas.create_polygon(coords, fill="#ecefe9", outline="#9caca0")
+                c.create_polygon(coords, fill=ui.CANVAS, outline="#a9b5ab")
         valid = self.placed.fits(self.surface)
-        color = ACCENT if valid else DANGER
-        self.geometry(self.placed.geometry, color, "#e4eae0")
+        colour = ui.ACCENT if valid else ui.DANGER
+        self.geometry(self.placed.geometry, colour, "#f9faf8")
         left, bottom, right, top = self.placed.geometry.bounds
         a, b = self.screen(left, bottom), self.screen(right, top)
-        self.canvas.create_rectangle(*a, *b, outline=color, dash=(4, 3), width=1)
-        for x, y in [a, b, (a[0], b[1]), (b[0], a[1])]:
-            self.canvas.create_rectangle(x - 3, y - 3, x + 3, y + 3, fill=BG, outline=color)
+        pad = px(5)
+        x0, x1 = sorted((a[0], b[0]))
+        y0, y1 = sorted((a[1], b[1]))
+        c.create_rectangle(x0 - pad, y0 - pad, x1 + pad, y1 + pad, outline=colour, dash=(4, 3))
+        knob = px(3)
+        for x, y in [
+            (x0 - pad, y0 - pad),
+            (x1 + pad, y0 - pad),
+            (x0 - pad, y1 + pad),
+            (x1 + pad, y1 + pad),
+        ]:
+            c.create_rectangle(x - knob, y - knob, x + knob, y + knob, fill="white", outline=colour)
         scale, *_ = self.transform()
-        self.canvas.create_line(26, h - 28, 26 + 10 * scale, h - 28, fill=INK, width=2)
-        self.canvas.create_text(26, h - 40, text="10 mm", anchor="w", fill=MUTED, font=(FONT, 9))
+        bar = 10 * scale
+        c.create_line(px(20), h - px(22), px(20) + bar, h - px(22), fill=ui.INK, width=px(2))
+        c.create_text(
+            px(20), h - px(32), text="10 mm", anchor="sw", fill=ui.MUTED, font=(ui.FONT, 9)
+        )
+        c.create_text(
+            px(16),
+            px(14),
+            text="UNDERSIDE VIEW  ·  drag the label to move it",
+            anchor="nw",
+            fill=ui.SUBTLE,
+            font=(ui.SEMIBOLD, 8),
+        )
         self.height_label.configure(text=f"{self.placed.height:g} mm")
         self.status.configure(
-            text="✓  Fits the solid surface" if valid else "Move inside the safe area",
-            foreground=color,
+            text="✓  Fits the solid area" if valid else "✕  Outside the solid area",
+            foreground=colour,
+            background=ui.ACCENT_SOFT if valid else ui.DANGER_SOFT,
         )
         self.ok.configure(state="normal" if valid else "disabled")
 
@@ -218,7 +267,10 @@ class PlacementWindow:
         self.root.destroy()
 
 
-def choose_placement(footprint, surface, placed, settings, material, part_id, *, demo=False):
+def choose_placement(
+    footprint, surface, placed, settings, material, part_id, job_name="", *, demo=False
+):
+    ui.enable_dpi_awareness()
     try:
         root = tk.Tk()
     except tk.TclError:
@@ -226,7 +278,7 @@ def choose_placement(footprint, surface, placed, settings, material, part_id, *,
         return placed
     try:
         window = PlacementWindow(
-            root, footprint, surface, placed, settings, material, part_id, demo=demo
+            root, footprint, surface, placed, settings, material, part_id, job_name, demo=demo
         )
         root.mainloop()
         return window.result

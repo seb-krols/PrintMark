@@ -31,7 +31,7 @@ try {
     Start-Sleep -Seconds 12
     $desktop.Refresh()
     if ($desktop.HasExited) { throw 'Desktop settings launcher exited unexpectedly' }
-    $settingsWindow = Get-Process basemark-desktop | Where-Object { $_.MainWindowTitle -like 'BaseMark*Lab settings*' }
+    $settingsWindow = Get-Process basemark-desktop | Where-Object { $_.MainWindowTitle -eq 'BaseMark' }
     if (!$settingsWindow) { throw 'Desktop did not open its settings window' }
     # End the UI smoke process before testing an upgrade.
     taskkill /PID $desktop.Id /T /F | Out-Null

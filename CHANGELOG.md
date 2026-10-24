@@ -1,5 +1,20 @@
 # Changes
 
+## 0.4.0 — redesigned app
+
+- New BaseMark app layout with a sidebar: **Overview** (PrusaSlicer status with one-click
+  setup and the result of every check, this PC's prefix and next ID, stamping on/off, ask vs.
+  automatic placement, label preview, recent exports), **Stamp**, **Find part** (result as a
+  card) and **Advanced** (numbering, record files, manual hook, check/recover tools).
+- Settings save automatically when a field is left or a toggle changes; there is no Save
+  button to forget. Invalid values are reported in the status bar and not saved.
+- The export window (*Stamp this export*) names the G-code file, material and ID, shows a
+  clear fit badge and keyboard hints, and keeps controls visible on small screens.
+- Crisp text at 150–200% Windows display scaling (DPI aware, layout scaled to match).
+- The export window restores itself if Windows leaves it minimized; it was seen minimized
+  while PrusaSlicer waited, which looks like a hung export.
+- The Start menu entry is now **BaseMark**.
+
 ## 0.3.1 — easier PrusaSlicer setup
 
 - **Set up PrusaSlicer for me** and **Check my setup** in settings (and

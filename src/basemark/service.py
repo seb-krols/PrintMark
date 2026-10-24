@@ -82,7 +82,8 @@ def process(
                 from .popup import choose_placement
 
                 choose = choose_placement
-            placed = choose(footprint, surface, placed, settings, job.material, part_id)
+            job_name = Path(job.output_name or path).name
+            placed = choose(footprint, surface, placed, settings, job.material, part_id, job_name)
             if placed is None:
                 return Outcome("skipped", "Label skipped; file unchanged, no ID consumed.")
         if not placed.fits(surface):

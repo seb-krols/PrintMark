@@ -8,7 +8,7 @@ print that retains its stamped base can carry its material identity into the rec
 
 Built at the UBC IGEN 3D Print Shop by Sebastians Krols.
 
-**Status: v0.3 lab pilot.** PrintMark is the repository; BaseMark is the application name.
+**Status: v0.4 lab pilot.** PrintMark is the repository; BaseMark is the application name.
 Software verification is separate from physical qualification: check every printer, profile
 and sheet with real coupons before routine use. This is not yet a production-qualified tool.
 
@@ -19,38 +19,38 @@ and sheet with real coupons before routine use. This is not yet a production-qua
 1. While signed in to GitHub with access to this private repository, open
    [**Releases**](https://github.com/seb-krols/PrintMark/releases) and pick the newest
    `BaseMark … Windows pilot`.
-2. Download `basemark-0.3.1-windows-x64-setup.exe` (and optionally its `.sha256`).
+2. Download `basemark-0.4.0-windows-x64-setup.exe` (and optionally its `.sha256`).
 3. Run it. It installs per user to `%LOCALAPPDATA%\Programs\BaseMark` without administrator
-   rights and adds **BaseMark Settings** to the Start menu. Python is not needed.
+   rights and adds **BaseMark** to the Start menu. Python is not needed.
 
 The build is unsigned, so Windows SmartScreen may say *Windows protected your PC*: choose
 **More info → Run anyway** after checking the file came from this repository. To verify it:
-`Get-FileHash .\basemark-0.3.1-windows-x64-setup.exe` must match the `.sha256` file.
+`Get-FileHash .\basemark-0.4.0-windows-x64-setup.exe` must match the `.sha256` file.
 A portable ZIP is attached too; keep its `.exe` files and `_internal` folder together.
 
 ## First test with PrusaSlicer (about 10 minutes)
 
-1. **Pick a PC prefix.** Open **BaseMark Settings** from Start. Under **Identity & records**
-   set a unique prefix such as `A`, then click **Save settings**.
+1. **Pick a PC prefix.** Open **BaseMark** from the Start menu. On **Overview**, type a
+   prefix such as `A` under *This computer*. Changes save automatically.
 2. **Connect PrusaSlicer.** In PrusaSlicer, select the printer and print profile you normally
-   use, then **close PrusaSlicer**. In BaseMark's **PrusaSlicer setup** tab click
-   **Set up PrusaSlicer for me**. It adds `… + BaseMark` copies of those presets with the
-   hook on, arc fitting off and plain (not binary) G-code, and selects them. Your existing
-   presets are not changed. The report underneath must say **Ready**.
+   use, then **close PrusaSlicer**. In BaseMark click **Set up PrusaSlicer**. It adds
+   `… + BaseMark` copies of those presets with the hook on, arc fitting off and plain (not
+   binary) G-code, and selects them. Your existing presets are not changed. The Overview must
+   say **Ready to stamp**.
 3. **Slice the coupon.** Open PrusaSlicer, import
    `%LOCALAPPDATA%\Programs\BaseMark\examples\basemark-coupon.stl`, slice, then click
-   **Export G-code**. The BaseMark window opens *during the export* (not when slicing): drag
-   the label if you like (**+/−** resize, **R** rotates), then **Enter** to apply or **Esc**
-   to skip.
-4. **Check the result.** In BaseMark Settings → **Diagnostics → Refresh result** you should see
-   `stamped`. Open the exported file in **PrusaSlicer G-code Viewer** (File → G-code preview):
-   the first layers show mirrored text-shaped gaps, with a solid layer above.
-   The normal slicer preview still shows the toolpaths from before BaseMark.
-5. **Find it again.** **Find part** in settings, enter the printed ID (e.g. `A001`).
+   **Export G-code**. The *Stamp this export* window opens during the export (not when
+   slicing): drag the label if you like (**+/−** size, **R** rotate), then **Enter** to apply
+   or **Esc** to skip.
+4. **Check the result.** BaseMark's Overview lists it under *Recent exports* as `STAMPED`.
+   Open the exported file in **PrusaSlicer G-code Viewer** (File → G-code preview): the first
+   layers show mirrored text-shaped gaps, with a solid layer above. The normal slicer preview
+   still shows the toolpaths from before BaseMark.
+5. **Find it again.** **Find part**, then enter the printed ID (e.g. `A001`).
 6. **Print it** under normal supervision, then follow the [lab test plan](docs/lab-validation.md).
 
-**Nothing happened on export?** Click **Check my setup** in the PrusaSlicer setup tab. It
-reads PrusaSlicer's *saved* presets and lists anything still missing. Changes made inside
+**Nothing happened on export?** Click **Check again** on the Overview. It reads PrusaSlicer's
+*saved* presets and lists anything still missing. Changes made inside
 PrusaSlicer only count once the preset is saved, and opening a `.3mf` project can switch
 back to the presets stored in that project. If the result says *skipped*, the message names the
 cause: for example `G2 is unsupported` (arc fitting on) or `binary/packaged G-code`.
@@ -81,7 +81,7 @@ so tall, narrow parts can retain full-size lettering.
 
 ## Find a part from its printed ID
 
-Open **Settings → Find part** and enter the complete ID, such as `A042`. The result shows the
+Open **BaseMark → Find part** and enter the complete ID, such as `A042`. The result shows the
 material, export time, filename, object names, computer and output hash from the saved CSV.
 Search is exact and case-sensitive; prefixes and leading zeros matter. It reads the local log,
 so use the originating PC or a copy of its CSV. It records an export, not proof of a finished print.
@@ -175,11 +175,12 @@ Before replacing G-code, BaseMark checks that the CSV is readable and the propos
 already recorded. Losing/resetting a counter therefore cannot reuse an ID present in that log.
 Keep the history backed up: this check cannot detect IDs from a deleted or different CSV.
 
-The **Diagnostics** tab shows the last export result, checks an original G-code file without
-consuming an ID, and recovers interrupted audits from an exact matching final export.
+The **Overview** shows the last export result and recent exports. **Advanced** checks an
+original G-code file without consuming an ID and recovers interrupted audits from an exact
+matching final export.
 `basemark --check job.gcode` performs the same compatibility check (exit 2 on unsupported input).
 
-![Export diagnostics and counter recovery](docs/images/diagnostics.png)
+![Advanced: numbering, the PrusaSlicer hook and recovery tools](docs/images/diagnostics.png)
 
 `--dump-env` writes relevant slicer variables to `environment.json` beside the config and
 does not stamp. It omits unrelated slicer settings such as host credentials. `--dump-all-env`

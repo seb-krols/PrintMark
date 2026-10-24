@@ -19,13 +19,13 @@ While signed into the GitHub account with access to this private repository, ope
 [Windows installer build](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml)
 also has a `basemark-windows-x64` artifact with the same files.) The downloads are:
 
-- `basemark-0.3.1-windows-x64-setup.exe`: the recommended per-user installer.
-- `basemark-0.3.1-windows-x64.zip`: portable alternative; extract to a permanent local folder.
+- `basemark-0.4.0-windows-x64-setup.exe`: the recommended per-user installer.
+- `basemark-0.4.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
   Keep `basemark.exe`, `basemark-desktop.exe` and the `_internal` folder together.
 - SHA-256 files for verifying downloads with PowerShell `Get-FileHash`.
 
 Run the setup executable. It installs to `%LOCALAPPDATA%\Programs\BaseMark` without
-administrator rights and adds **BaseMark Settings** to the Start menu. Builds are currently
+administrator rights and adds **BaseMark** to the Start menu. Builds are currently
 unsigned; SmartScreen may say *Windows protected your PC*: choose **More info → Run anyway**
 after checking the download source and checksum.
 If your institution blocks unsigned software, ask its IT administrator about deployment.
@@ -35,21 +35,21 @@ Private repository artifacts require GitHub access and expire; keep the tested l
 
 ## 2. Connect PrusaSlicer
 
-1. Open **BaseMark Settings** from Start (or `basemark-desktop.exe` in the portable folder).
-2. Under **Identity & records**, choose a unique PC prefix: `A`, `B`, etc. Save settings.
+1. Open **BaseMark** from Start (or `basemark-desktop.exe` in the portable folder).
+2. On **Overview**, enter a unique PC prefix: `A`, `B`, etc. Changes save automatically.
 
 **Automatic (recommended):** in PrusaSlicer select the printer and print presets you use,
-close PrusaSlicer, then in **PrusaSlicer setup** click **Set up PrusaSlicer for me**. BaseMark
+close PrusaSlicer, then on BaseMark's **Overview** click **Set up PrusaSlicer**. BaseMark
 writes `… + BaseMark` copies of both presets into PrusaSlicer's settings folder (hook added,
 arc fitting off, binary G-code off), fully resolved from their parents, and selects them.
 Existing presets are untouched; `PrusaSlicer.ini.basemark-backup` keeps the previous
-selection. Repeat for each print preset the lab uses. **Check my setup** reports what the
-saved presets still lack. On the command line: `basemark.exe --setup-prusaslicer` and
+selection. Repeat for each print preset the lab uses. **Check again** on the Overview lists
+what the saved presets still lack. On the command line: `basemark.exe --setup-prusaslicer` and
 `basemark.exe --check-prusaslicer` (exit 0 ready, 2 needs fixing).
 
 **Manual:**
 
-3. Open **PrusaSlicer setup** and click **Copy command**. This copies the actual installed
+3. Open **Advanced → PrusaSlicer hook** and click **Copy**. This copies the actual installed
    path to `basemark.exe`, including quotes. Use this executable for the slicer hook.
 4. In PrusaSlicer, enable **Expert mode**, then open **Print Settings → Output options →
    Post-processing scripts**. Paste the command on its own line. Save a copy of the lab's
@@ -77,11 +77,11 @@ Filament Notes can contain `basemark: layers=2; size=6` for profile-specific set
 1. Import `examples\basemark-coupon.stl` from the install folder into PrusaSlicer. Use your
    actual printer, filament and sheet presets. Export once **without the hook** to keep an
    original reference; then restore the hook.
-2. In BaseMark **Diagnostics → Check G-code**, select that original export. The check uses
+2. In BaseMark **Advanced → Check a G-code file**, select that original export. The check uses
    saved settings and embedded slicer metadata, leaves the file unchanged and consumes no ID.
    It verifies software compatibility and fit; it does not validate printer behavior.
 3. Export with the hook enabled. Confirm the material and ID in the popup, drag if needed,
-   and apply. Open **Diagnostics → Refresh result** to see whether the export stamped or
+   and apply. BaseMark's Overview shows under *Recent exports* whether it stamped or
    skipped. `last-export.json` also records the latest result.
 4. Open the **final exported file** in PrusaSlicer's G-code Viewer. Check the text-shaped
    gaps in the first two layers and the solid roof above. The slicer's normal preview shows
@@ -95,7 +95,7 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
 
 ## Daily use, updates and removal
 
-- **Find a part:** open **Find part** in settings and enter its full printed ID (`A042`).
+- **Find a part:** open **Find part** in BaseMark and enter its full printed ID (`A042`).
   It searches the CSV selected in saved settings and shows the original export's details.
   An unknown ID may belong to another PC; each computer keeps its own local history.
 - **Skip one job:** choose **Skip label** in the popup. For automatic mode, temporarily
@@ -113,10 +113,10 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
 
 | Symptom | Action |
 | --- | --- |
-| No popup or marking | Click **Check my setup** (PrusaSlicer setup tab). Usually the print preset with the hook was never saved, a different preset or `.3mf` project preset is active, or the job was only sliced, not exported. If Diagnostics shows *skipped*, the reason is listed; a safe skip leaves the export unchanged. |
+| No popup or marking | Click **Check again** on BaseMark's Overview. Usually the print preset with the hook was never saved, a different preset or `.3mf` project preset is active, or the job was only sliced, not exported. If Recent exports shows *skipped*, the reason is listed; a safe skip leaves the export unchanged. |
 | File cannot fit a stamp | Use a larger footprint, adjust size/margin within limits, or skip this part. Holes and sparse bottoms reduce the usable area. |
 | Unsupported command/profile | Run `--dump-env` through the hook once, preserve a small original export and report the skip reason. Restore the normal hook afterward. |
-| Pending audit / missing temporary file | Close Excel if it has the CSV open. Use **Diagnostics → Recover from exported G-code** with the exact surviving stamped file. See [recovery](docs/recovery.md). |
+| Pending audit / missing temporary file | Close Excel if it has the CSV open. Use **Advanced → Recover an interrupted export** with the exact surviving stamped file. See [recovery](docs/recovery.md). |
 | ID already exists in the audit log | Restore the counter backup, or move Next ID above the highest recorded number for this series. Keep the CSV; do not delete history to clear the error. |
 | Export fails to launch BaseMark | Re-copy the quoted command from settings; ensure the exe has not been moved or removed. |
 

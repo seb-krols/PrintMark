@@ -27,15 +27,17 @@ CloseApplications=yes
 [InstallDelete]
 ; Replace the shared runtime on upgrade so no stale DLLs from an older build remain.
 Type: filesandordirs; Name: "{app}\_internal"
+; Start menu shortcut name used before 0.4.0.
+Type: files; Name: "{group}\BaseMark Settings.lnk"
 
 [Files]
 Source: "..\build\windows-payload\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\BaseMark Settings"; Filename: "{app}\basemark-desktop.exe"
+Name: "{group}\BaseMark"; Filename: "{app}\basemark-desktop.exe"
 Name: "{group}\BaseMark Installation Guide"; Filename: "{app}\INSTALL.md"
 
 [Run]
-Filename: "{app}\basemark-desktop.exe"; Description: "Open BaseMark settings"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\basemark-desktop.exe"; Description: "Open BaseMark"; Flags: nowait postinstall skipifsilent
 
 ; Deliberately no UninstallDelete for AppData: preserve IDs, settings and logs.
