@@ -1,5 +1,21 @@
 # Changes
 
+## 0.5.0 — export notices and faster large files
+
+- After each export a small notice in the screen corner says **Stamped >PLA< A001** or
+  **Export not stamped** with the reason (arc moves, binary G-code, part too small, …).
+  PrusaSlicer only shows a script's output when it fails, so safe skips used to be
+  silent. It runs detached, so the export never waits for it. Turn it off on the
+  Overview (*Show a notice after each export*) or with `notify = false`.
+- Large files are about twice as fast: the parser has a fast path for plain moves and
+  no longer builds temporary sets per line (6 MB job: 1.95 s → 0.86 s parsing; same
+  checks, identical results on all fixtures). Slicer metadata is no longer re-scanned
+  when PrusaSlicer already provides it.
+- An open BaseMark window follows exports: Recent exports and the next ID update by
+  themselves. Before, changing a setting after an export failed with *Next ID must be
+  at least …* until the window was reopened.
+- The Overview highlights a missing computer prefix.
+
 ## 0.4.1 — clearer export step
 
 - The Overview says that BaseMark runs on **Export G-code** (Ctrl+G) or **Send to

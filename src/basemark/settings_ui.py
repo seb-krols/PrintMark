@@ -7,7 +7,7 @@ import os
 import subprocess
 import sys
 import tkinter as tk
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -21,6 +21,7 @@ from .prusaslicer import SetupError, check, hook_command, setup
 
 INTEGER_FIELDS = {"layers", "counter_digits", "counter_next"}
 FLOAT_FIELDS = {"text_height_mm", "min_text_height_mm", "margin_mm"}
+WATCH_MS = 2000  # how often to look for exports made while the window is open
 PAGES = [
     ("overview", "Overview"),
     ("stamp", "Stamp"),
@@ -58,7 +59,7 @@ class SettingsWindow:
         px = ui.px
 
         for key, value in asdict(self.settings).items():
-            if key == "enabled":
+            if key in ("enabled", "notify"):
                 self.values[key] = tk.BooleanVar(value=value)
             elif key == "material_map":
                 self.values[key] = tk.StringVar(value=json.dumps(value))
@@ -130,6 +131,51 @@ class SettingsWindow:
         ui.center(root, 980, 680)
         self.show("overview")
         root.after(150, self.refresh_status)
+        self.seen = self.export_marks()
+        root.after(WATCH_MS, self.watch_exports)
+
+    # ---------- exports while the window is open ----------
+
+    def export_marks(self):
+        counter_path, _ = self.settings.paths(self.path.parent)
+        marks = []
+        for path in (counter_path, self.path.parent / "last-export.json"):
+            try:
+                marks.append(path.stat().st_mtime_ns)
+            except OSError:
+                marks.append(None)
+        return tuple(marks)
+
+    def watch_exports(self):
+        """Show exports made while this window is open, and follow the consumed IDs.
+
+        Without this, the window kept the old next ID and refused every later change
+        ("Next ID must be at least …").
+        """
+        try:
+            marks = self.export_marks()
+            if marks != self.seen and self.follow_counter():
+                self.seen = marks
+                if self.pages["overview"].winfo_ismapped():
+                    self.refresh_overview()
+            self.root.after(WATCH_MS, self.watch_exports)
+        except tk.TclError:  # window closed
+            pass
+
+    def follow_counter(self) -> bool:
+        counter_path, _ = self.settings.paths(self.path.parent)
+        try:
+            with Counter(counter_path, self.settings.counter_next, recover=False) as counter:
+                latest = counter.next
+        except Exception:
+            return False  # an export holds the counter; look again on the next tick
+        if latest != self.saved_next:
+            edited = self.values["counter_next"].get().strip() != str(self.saved_next)
+            self.saved_next = latest
+            self.settings = replace(self.settings, counter_next=latest)
+            if not edited:
+                self.values["counter_next"].set(str(latest))
+        return True
 
     # ---------- layout helpers ----------
 
@@ -263,6 +309,14 @@ class SettingsWindow:
         ttk.Label(right, text="Label preview", style="Card.Muted.TLabel").pack(anchor="w")
         self.preview = ttk.Label(right, text="", style="Value.TLabel", font=(ui.SEMIBOLD, 13))
         self.preview.pack(anchor="w")
+        notice_row = ttk.Frame(right, style="Card.TFrame")
+        notice_row.pack(fill="x", pady=(ui.px(12), 0))
+        ui.Switch(notice_row, self.values["notify"], command=self.save).pack(side="left")
+        ttk.Label(
+            notice_row,
+            text="Show a notice after each export",
+            style="Card.TLabel",
+        ).pack(side="left", padx=ui.px(10))
 
         frame, recent = ui.card(page, fill="x")
         head = ttk.Frame(recent, style="Card.TFrame")
@@ -285,9 +339,10 @@ class SettingsWindow:
             next_id = "—"
         self.next_id.configure(text=next_id)
         self.prefix_hint.configure(
-            text="Give every PC its own letter (A, B, …) so IDs never clash."
+            text="Set a prefix: give every PC its own letter (A, B, …) so IDs never clash."
             if not prefix
-            else "Unique to this PC. Labels and the log use it."
+            else "Unique to this PC. Labels and the log use it.",
+            foreground=ui.WARN if not prefix else ui.MUTED,
         )
         try:
             preview = (

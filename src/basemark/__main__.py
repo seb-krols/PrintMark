@@ -114,8 +114,10 @@ def main(argv=None) -> int:
     def report(outcome):
         if args.gcode and not (args.dry_run or args.check):
             from .diagnostics import record_export
+            from .notify import announce
 
             record_export(args.config, args.gcode, outcome, overrides, dict(os.environ))
+            announce(args.config, outcome, overrides, args.gcode)
 
     try:
         if args.lookup is not None:

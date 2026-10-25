@@ -11,6 +11,7 @@ counter_next = 1
 counter_file = ""
 log_file = ""
 label = ""
+notify = true
 
 [material_map]
 PET = "PETG"

@@ -15,6 +15,9 @@ from .errors import SafeSkip
 NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)"
 WORD = re.compile(rf"([A-Z])\s*({NUMBER})", re.I)
 COMMAND = re.compile(r"^([GMT])(\d+(?:\.\d+)?)(?:\s|(?=[A-Z])|$)", re.I)
+# Canonical PrusaSlicer move without a comment, e.g. "G1 X10.5 Y3 E.0213". Nearly every
+# line of a print matches, so it skips the general tokenizer; anything else takes it.
+PLAIN_G1 = re.compile(rf"G1((?: [XYZEF]{NUMBER})+)[ \t]*(?:\r\n|\n|\r)?\Z")
 PART_TYPES = {
     "External perimeter",
     "Perimeter",
@@ -26,6 +29,7 @@ PART_TYPES = {
     "Gap fill",
 }
 SOLID_TYPES = PART_TYPES - {"Internal infill"}
+MOVE_KEYS = frozenset("XYZEF")
 # Only commands with known non-positional semantics are allowed after slicing starts.
 PASSIVE = {
     "G4",
@@ -129,67 +133,75 @@ def parse(text: str, default_width: float = 0.45, *, retain_layers: int | None =
     z_hint, last_z_hint = None, -math.inf
     moves, objects = [], []
     for index, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped == ";LAYER_CHANGE":
-            layer += 1
-            feature, wipe, z_hint = "", False, None
-        elif stripped.startswith(";Z:"):
-            try:
-                z_hint = float(stripped[3:])
-            except ValueError as exc:
-                raise SafeSkip("invalid layer Z annotation") from exc
-            if not math.isfinite(z_hint) or z_hint <= last_z_hint:
-                raise SafeSkip("non-increasing layers (sequential objects are unsupported)")
-            last_z_hint = z_hint
-        elif stripped.startswith(";TYPE:"):
-            feature = stripped[6:].strip()
-        elif stripped.startswith(";WIDTH:"):
-            try:
-                width = float(stripped[7:])
-            except ValueError as exc:
-                raise SafeSkip("invalid extrusion width") from exc
-            if not math.isfinite(width) or not 0.1 <= width <= 2:
-                raise SafeSkip("unsupported extrusion width")
-        elif stripped == ";WIPE_START":
-            wipe = True
-        elif stripped == ";WIPE_END":
-            wipe = False
-        elif stripped.startswith("; printing object "):
-            name = stripped.removeprefix("; printing object ")
-            if name not in objects:
-                objects.append(name)
-        code, sep, comment = line.partition(";")
-        code = code.strip()
-        if not code:
-            continue
-        match = COMMAND.match(code)
-        if not match or "*" in code:
-            raise SafeSkip(f"unrecognized/numbered G-code at line {index + 1}")
-        major, dot, minor = match[2].partition(".")
-        command = f"{match[1].upper()}{int(major)}" + (dot + minor if dot else "")
-        if command in {"M117", "M118"}:
-            continue
-        rest = code[match.end() :]
-        if command == "M486" and rest.lstrip()[:1] == "A":
-            # Firmware object labels (Prusa MK4/XL/MINI profiles): M486 A<name>.
-            name = rest.lstrip()[1:].strip()
-            if name and name not in objects:
-                objects.append(name)
-            continue
-        words = WORD.findall(rest)
-        residue = WORD.sub("", rest).strip()
-        params = {key.upper(): float(value) for key, value in words}
-        if command in {"G0", "G1", "G92", "G90", "G91", "M82", "M83"}:
-            if (
-                residue
-                or len(params) != len(words)
-                or any(not math.isfinite(v) for v in params.values())
-            ):
+        plain = PLAIN_G1.match(line)
+        if plain:
+            words = plain[1].split()
+            params = {word[0]: float(word[1:]) for word in words}
+            if len(params) != len(words) or not all(map(math.isfinite, params.values())):
                 raise SafeSkip(f"malformed motion at line {index + 1}")
-        if command in {"G2", "G3", "G5", "G20", "G10", "G11", "M200", "M206", "M428"}:
-            raise SafeSkip(
-                f"{command} is unsupported; disable arcs/volumetric E/firmware retraction"
-            )
+            command, sep, comment = "G1", "", ""
+        else:
+            stripped = line.strip()
+            if stripped == ";LAYER_CHANGE":
+                layer += 1
+                feature, wipe, z_hint = "", False, None
+            elif stripped.startswith(";Z:"):
+                try:
+                    z_hint = float(stripped[3:])
+                except ValueError as exc:
+                    raise SafeSkip("invalid layer Z annotation") from exc
+                if not math.isfinite(z_hint) or z_hint <= last_z_hint:
+                    raise SafeSkip("non-increasing layers (sequential objects are unsupported)")
+                last_z_hint = z_hint
+            elif stripped.startswith(";TYPE:"):
+                feature = stripped[6:].strip()
+            elif stripped.startswith(";WIDTH:"):
+                try:
+                    width = float(stripped[7:])
+                except ValueError as exc:
+                    raise SafeSkip("invalid extrusion width") from exc
+                if not math.isfinite(width) or not 0.1 <= width <= 2:
+                    raise SafeSkip("unsupported extrusion width")
+            elif stripped == ";WIPE_START":
+                wipe = True
+            elif stripped == ";WIPE_END":
+                wipe = False
+            elif stripped.startswith("; printing object "):
+                name = stripped.removeprefix("; printing object ")
+                if name not in objects:
+                    objects.append(name)
+            code, sep, comment = line.partition(";")
+            code = code.strip()
+            if not code:
+                continue
+            match = COMMAND.match(code)
+            if not match or "*" in code:
+                raise SafeSkip(f"unrecognized/numbered G-code at line {index + 1}")
+            major, dot, minor = match[2].partition(".")
+            command = f"{match[1].upper()}{int(major)}" + (dot + minor if dot else "")
+            if command in {"M117", "M118"}:
+                continue
+            rest = code[match.end() :]
+            if command == "M486" and rest.lstrip()[:1] == "A":
+                # Firmware object labels (Prusa MK4/XL/MINI profiles): M486 A<name>.
+                name = rest.lstrip()[1:].strip()
+                if name and name not in objects:
+                    objects.append(name)
+                continue
+            words = WORD.findall(rest)
+            residue = WORD.sub("", rest).strip()
+            params = {key.upper(): float(value) for key, value in words}
+            if command in {"G0", "G1", "G92", "G90", "G91", "M82", "M83"}:
+                if (
+                    residue
+                    or len(params) != len(words)
+                    or any(not math.isfinite(v) for v in params.values())
+                ):
+                    raise SafeSkip(f"malformed motion at line {index + 1}")
+            if command in {"G2", "G3", "G5", "G20", "G10", "G11", "M200", "M206", "M428"}:
+                raise SafeSkip(
+                    f"{command} is unsupported; disable arcs/volumetric E/firmware retraction"
+                )
         if command in {"G90", "G91"}:
             xyz_relative = command == "G91"
             e_relative = None
@@ -206,16 +218,20 @@ def parse(text: str, default_width: float = 0.45, *, retain_layers: int | None =
             if "E" in params:
                 e = params["E"]
         elif command in {"G0", "G1"}:
-            if params.keys() - set("XYZEF"):
+            # Hot loop: avoid per-line set/generator construction (large files).
+            if not params.keys() <= MOVE_KEYS:
                 raise SafeSkip(f"unsupported motion parameters at line {index + 1}")
-            if any(k in params for k in "XYZ") and xyz_relative is None:
+            planar = "X" in params or "Y" in params
+            positioned = planar or "Z" in params
+            if positioned and xyz_relative is None:
                 raise SafeSkip("XYZ positioning mode must be explicit (G90/G91)")
             start = tuple(xyz)
-            for i, key in enumerate("XYZ"):
-                if key in params:
-                    if xyz_relative and xyz[i] is None:
-                        raise SafeSkip("relative move starts at an unknown position")
-                    xyz[i] = (xyz[i] + params[key]) if xyz_relative else params[key]
+            if positioned:
+                for i, key in enumerate("XYZ"):
+                    if key in params:
+                        if xyz_relative and xyz[i] is None:
+                            raise SafeSkip("relative move starts at an unknown position")
+                        xyz[i] = (xyz[i] + params[key]) if xyz_relative else params[key]
             e_start = e
             delta_e = 0.0
             if "E" in params:
@@ -226,7 +242,7 @@ def parse(text: str, default_width: float = 0.45, *, retain_layers: int | None =
                 e_start = e or 0.0
                 delta_e = params["E"] if e_relative else params["E"] - e_start
                 e = e_start + delta_e
-            if layer >= 0 and delta_e > 0 and any(k in params for k in "XY"):
+            if layer >= 0 and delta_e > 0 and planar:
                 if None in start or None in xyz:
                     raise SafeSkip("extrusion starts at an unknown XYZ position")
                 if abs(xyz[2] - start[2]) > 1e-6:

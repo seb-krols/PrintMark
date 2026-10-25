@@ -37,10 +37,13 @@ class Settings:
     log_file: str = ""
     material_map: dict[str, str] = field(default_factory=dict)
     label: str = ""
+    notify: bool = True
 
     def validate(self) -> Settings:
         if type(self.enabled) is not bool or self.mode not in {"auto", "interactive"}:
             raise SafeSkip("enabled must be true/false; mode must be auto or interactive")
+        if type(self.notify) is not bool:
+            raise SafeSkip("notify must be true/false")
         for name, low, high in [
             ("layers", 1, 3),
             ("counter_digits", 1, 12),

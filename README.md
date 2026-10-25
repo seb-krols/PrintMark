@@ -8,7 +8,7 @@ print that retains its stamped base can carry its material identity into the rec
 
 Built at the UBC IGEN 3D Print Shop by Sebastians Krols.
 
-**Status: v0.4 lab pilot.** PrintMark is the repository; BaseMark is the application name.
+**Status: v0.5 lab pilot.** PrintMark is the repository; BaseMark is the application name.
 Software verification is separate from physical qualification: check every printer, profile
 and sheet with real coupons before routine use. This is not yet a production-qualified tool.
 
@@ -19,13 +19,13 @@ and sheet with real coupons before routine use. This is not yet a production-qua
 1. While signed in to GitHub with access to this private repository, open
    [**Releases**](https://github.com/seb-krols/PrintMark/releases) and pick the newest
    `BaseMark … Windows pilot`.
-2. Download `basemark-0.4.1-windows-x64-setup.exe` (and optionally its `.sha256`).
+2. Download `basemark-0.5.0-windows-x64-setup.exe` (and optionally its `.sha256`).
 3. Run it. It installs per user to `%LOCALAPPDATA%\Programs\BaseMark` without administrator
    rights and adds **BaseMark** to the Start menu. Python is not needed.
 
 The build is unsigned, so Windows SmartScreen may say *Windows protected your PC*: choose
 **More info → Run anyway** after checking the file came from this repository. To verify it:
-`Get-FileHash .\basemark-0.4.1-windows-x64-setup.exe` must match the `.sha256` file.
+`Get-FileHash .\basemark-0.5.0-windows-x64-setup.exe` must match the `.sha256` file.
 A portable ZIP is attached too; keep its `.exe` files and `_internal` folder together.
 
 ## First test with PrusaSlicer (about 10 minutes)
@@ -42,7 +42,8 @@ A portable ZIP is attached too; keep its `.exe` files and `_internal` folder tog
    **Export G-code**. The *Stamp this export* window opens during the export (not when
    slicing): drag the label if you like (**+/−** size, **R** rotate), then **Enter** to apply
    or **Esc** to skip.
-4. **Check the result.** BaseMark's Overview lists it under *Recent exports* as `STAMPED`.
+4. **Check the result.** A notice in the screen corner confirms *Stamped >PLA< A001*, or
+   says why the export was left unchanged. The Overview lists it under *Recent exports*.
    Open the exported file in **PrusaSlicer G-code Viewer** (File → G-code preview): the first
    layers show mirrored text-shaped gaps, with a solid layer above. The normal slicer preview
    still shows the toolpaths from before BaseMark.
@@ -163,6 +164,7 @@ can also be configured with `material_map = { PET = "PETG" }`.
 | `log_file` | `""` | Defaults to `log.csv` next to config |
 | `material_map` | `{}` | Explicit filament-name aliases |
 | `label` | `""` | Optional explicit material-name override |
+| `notify` | `true` | Corner notice after each export (stamped or why not) |
 
 Relative counter/log paths resolve beside the config file. Use **local disks** for this pilot;
 network shares and cross-machine coordination are outside this release. The counter cannot

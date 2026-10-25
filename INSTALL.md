@@ -19,8 +19,8 @@ While signed into the GitHub account with access to this private repository, ope
 [Windows installer build](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml)
 also has a `basemark-windows-x64` artifact with the same files.) The downloads are:
 
-- `basemark-0.4.1-windows-x64-setup.exe`: the recommended per-user installer.
-- `basemark-0.4.1-windows-x64.zip`: portable alternative; extract to a permanent local folder.
+- `basemark-0.5.0-windows-x64-setup.exe`: the recommended per-user installer.
+- `basemark-0.5.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
   Keep `basemark.exe`, `basemark-desktop.exe` and the `_internal` folder together.
 - SHA-256 files for verifying downloads with PowerShell `Get-FileHash`.
 

@@ -56,7 +56,9 @@ def process(
     if overrides.get("enabled") is False:
         return Outcome("disabled", "BaseMark is off; file unchanged.")
     original, text = read_gcode(path)
-    notes = env.get("SLIC3R_FILAMENT_NOTES", metadata(text).get("FILAMENT_NOTES", ""))
+    notes = env.get("SLIC3R_FILAMENT_NOTES")
+    if notes is None:  # standalone use; scanning a large file's metadata is not free
+        notes = metadata(text).get("FILAMENT_NOTES", "")
     settings = load_settings(config, notes, overrides)
     if not settings.enabled:
         return Outcome("disabled", "BaseMark is off; file unchanged.")
@@ -85,7 +87,9 @@ def process(
             job_name = Path(job.output_name or path).name
             placed = choose(footprint, surface, placed, settings, job.material, part_id, job_name)
             if placed is None:
-                return Outcome("skipped", "Label skipped; file unchanged, no ID consumed.")
+                from .notify import USER_SKIP
+
+                return Outcome("skipped", USER_SKIP)
         if not placed.fits(surface):
             raise SafeSkip("placement is outside the solid surface or margin")
         output = rewrite(program, placed.geometry, settings.layers, part_id)

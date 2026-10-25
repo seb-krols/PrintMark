@@ -12,7 +12,12 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="BaseMark desktop settings")
     parser.add_argument("--config", type=Path, default=config_dir() / "config.toml")
     parser.add_argument("--demo", action="store_true")
+    parser.add_argument("--notify", nargs=3, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.notify:  # export notice started by the slicer hook (see notify.py)
+        from .notify import main as notice
+
+        return notice(["--notify", *args.notify, "--config", str(args.config)])
     try:
         if args.demo:
             from .popup import choose_placement

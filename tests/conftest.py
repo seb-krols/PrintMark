@@ -73,3 +73,13 @@ def job_file(tmp_path: Path, gcode):
     path = tmp_path / "job.gcode"
     path.write_text(gcode, encoding="utf-8")
     return path
+
+
+@pytest.fixture(autouse=True)
+def notices(monkeypatch):
+    """Record export notices instead of opening windows during tests."""
+    shown = []
+    monkeypatch.setattr(
+        "basemark.notify.spawn", lambda config, status, message, source: shown.append(status)
+    )
+    return shown

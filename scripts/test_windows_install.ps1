@@ -22,6 +22,15 @@ try {
     & $binary --mode auto $job
     if ($LASTEXITCODE -ne 0) { throw 'Installed executable failed' }
     if (!(Get-Content $job -First 1).StartsWith('; BASEMARK stamp')) { throw 'No stamp produced' }
+    # The export returned above while its corner notice keeps running in its own process.
+    $notice = $null
+    for ($i = 0; $i -lt 40 -and !$notice; $i++) {
+        Start-Sleep -Milliseconds 250
+        $notice = Get-CimInstance Win32_Process -Filter "Name = 'basemark-desktop.exe'" |
+            Where-Object { $_.CommandLine -like '*--notify stamped*' }
+    }
+    if (!$notice) { throw 'Export notice was not started' }
+    $notice | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
     $state = Join-Path $env:APPDATA 'BaseMark/counter.json'
     $log = Join-Path $env:APPDATA 'BaseMark/log.csv'
     if ((Get-Content $state -Raw | ConvertFrom-Json).next -ne 2) { throw 'Counter did not advance' }

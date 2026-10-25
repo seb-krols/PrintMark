@@ -137,3 +137,21 @@ def test_find_part_displays_export_without_consuming_id(root, tmp_path, job_file
     app.find_part()
     assert "No matching ID" in app.lookup_summary
     assert (tmp_path / "counter.json").read_bytes() == before
+
+
+def test_open_window_follows_exports_and_keeps_saving(root, tmp_path, job_file):
+    from basemark.service import process
+    from basemark.settings_ui import SettingsWindow
+
+    config = tmp_path / "config.toml"
+    app = SettingsWindow(root, config)
+    root.update()
+    assert app.next_id.cget("text") == "001"
+    assert process(job_file, config, {"mode": "auto"}, {}).status == "stamped"
+    app.watch_exports()
+    assert app.values["counter_next"].get() == "2"
+    assert app.next_id.cget("text") == "002"
+    app.values["counter_prefix"].set("B")
+    app.save()
+    assert app.feedback.cget("text").startswith("Saved")
+    assert load_settings(config).counter_prefix == "B"
