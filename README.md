@@ -19,9 +19,17 @@ and sheet with real coupons before routine use. This is not yet a production-qua
 1. While signed in to GitHub with access to this private repository, open
    [**Releases**](https://github.com/seb-krols/PrintMark/releases) and pick the newest
    `BaseMark … Windows pilot`.
-2. Download `basemark-0.5.0-windows-x64-setup.exe` (and optionally its `.sha256`).
-3. Run it. It installs per user to `%LOCALAPPDATA%\Programs\BaseMark` without administrator
-   rights and adds **BaseMark** to the Start menu. Python is not needed.
+2. In PrusaSlicer, select the printer and print profile you normally use, then **close
+   PrusaSlicer**.
+3. Download and run `basemark-0.5.0-windows-x64-setup.exe`. It has one page: type this PC's
+   **prefix** (`A`, `B`, …) and keep **Connect PrusaSlicer now** ticked, then click **Install**.
+   It installs per user to `%LOCALAPPDATA%\Programs\BaseMark` (no administrator rights, no
+   Python), adds `… + BaseMark` copies of the selected presets and selects them. BaseMark
+   opens and should say **Ready to stamp**.
+
+**Several shop PCs:** run the installer silently with that PC's prefix, e.g.
+`basemark-0.5.0-windows-x64-setup.exe /VERYSILENT /PREFIX=B` (PrusaSlicer closed). Add
+`/CONNECT=no` to leave PrusaSlicer alone. Upgrades keep the prefix, IDs and settings.
 
 The build is unsigned, so Windows SmartScreen may say *Windows protected your PC*: choose
 **More info → Run anyway** after checking the file came from this repository. To verify it:
@@ -30,13 +38,14 @@ A portable ZIP is attached too; keep its `.exe` files and `_internal` folder tog
 
 ## First test with PrusaSlicer (about 10 minutes)
 
-1. **Pick a PC prefix.** Open **BaseMark** from the Start menu. On **Overview**, type a
-   prefix such as `A` under *This computer*. Changes save automatically.
-2. **Connect PrusaSlicer.** In PrusaSlicer, select the printer and print profile you normally
-   use, then **close PrusaSlicer**. In BaseMark click **Set up PrusaSlicer**. It adds
+1. **Check the prefix.** Open **BaseMark** from the Start menu. *This computer* on the
+   **Overview** shows the prefix from the installer; change it there if needed (it saves
+   automatically).
+2. **Check PrusaSlicer.** The Overview must say **Ready to stamp**. If not (for example
+   PrusaSlicer was open during install, or you want another print profile), select the
+   profile in PrusaSlicer, **close PrusaSlicer** and click **Set up PrusaSlicer**. It adds
    `… + BaseMark` copies of those presets with the hook on, arc fitting off and plain (not
-   binary) G-code, and selects them. Your existing presets are not changed. The Overview must
-   say **Ready to stamp**.
+   binary) G-code, and selects them. Your existing presets are not changed.
 3. **Slice the coupon.** Open PrusaSlicer, import
    `%LOCALAPPDATA%\Programs\BaseMark\examples\basemark-coupon.stl`, slice, then click
    **Export G-code**. The *Stamp this export* window opens during the export (not when

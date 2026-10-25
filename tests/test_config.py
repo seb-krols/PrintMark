@@ -110,3 +110,17 @@ def test_windows_utf8_bom_config(tmp_path):
     path = tmp_path / "config.toml"
     path.write_text('counter_prefix = "A"\n', encoding="utf-8-sig")
     assert load_settings(path).counter_prefix == "A"
+
+
+def test_set_prefix_keeps_other_settings(tmp_path, capsys):
+    from basemark.__main__ import main
+    from basemark.config import load_settings
+
+    config = tmp_path / "config.toml"
+    config.write_text('mode = "auto"\ntext_height_mm = 8.0\n', encoding="utf-8")
+    assert main(["--config", str(config), "--set-prefix", " B "]) == 0
+    settings = load_settings(config)
+    assert (settings.counter_prefix, settings.mode, settings.text_height_mm) == ("B", "auto", 8.0)
+    assert main(["--config", str(config), "--set-prefix", "not ok!"]) == 1
+    assert "prefix must" in capsys.readouterr().err
+    assert load_settings(config).counter_prefix == "B"

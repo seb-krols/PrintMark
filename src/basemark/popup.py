@@ -9,6 +9,14 @@ from . import ui_common as ui
 from .footprint import polygons
 from .placement import auto_place
 
+try:  # Tk's canvas cannot anti-alias; Pillow renders smooth outlines and lettering.
+    from PIL import Image, ImageDraw, ImageTk
+except ImportError:  # source installs without Pillow fall back to plain canvas shapes
+    Image = None
+
+SUPERSAMPLE = 3  # draw at 3x and shrink: smooth edges at any display scaling
+GRID, PART, PART_EDGE, SAFE = "#d4dad3", "#d7ded5", "#a9b5ab", "#f9faf8"
+
 
 class PlacementWindow:
     """Shown during a PrusaSlicer export: confirm or adjust where the label goes."""
@@ -127,7 +135,8 @@ class PlacementWindow:
             wraplength=px(230),
         ).pack(anchor="w", pady=(px(12), 0))
 
-        self.canvas.bind("<Configure>", self.draw)
+        self.scene = self.scene_size = self.label_image = self.redraw = None
+        self.canvas.bind("<Configure>", self.resized)
         self.canvas.bind("<ButtonPress-1>", self.start_drag)
         self.canvas.bind("<B1-Motion>", self.drag)
         self.canvas.bind("<ButtonRelease-1>", lambda _: setattr(self, "drag_anchor", None))
@@ -159,48 +168,97 @@ class PlacementWindow:
         scale, cx, cy, sx, sy = self.transform()
         return cx - (x - sx) / scale, cy - (y - sy) / scale
 
-    def geometry(self, geometry, fill, holes, outline=""):
-        for poly in polygons(geometry):
-            coords = [v for x, y in poly.exterior.coords for v in self.screen(x, y)]
-            self.canvas.create_polygon(coords, fill=fill, outline=outline, width=1)
-            for ring in poly.interiors:
-                coords = [v for x, y in ring.coords for v in self.screen(x, y)]
-                self.canvas.create_polygon(coords, fill=holes, outline=outline, width=1)
+    def resized(self, _event=None):
+        # Window resizing sends a burst of events; repaint once it settles.
+        if self.redraw:
+            self.root.after_cancel(self.redraw)
+        if self.scene_size is None:  # first paint: no blank window
+            self.redraw = self.root.after_idle(self.draw)
+        else:
+            self.redraw = self.root.after(40, self.draw)
 
-    def draw(self, _event=None):
-        px, c = ui.px, self.canvas
-        c.delete("all")
-        w, h = c.winfo_width(), c.winfo_height()
-        step = px(24)
-        for x in range(step // 2, w, step):
-            for y in range(step // 2, h, step):
-                c.create_rectangle(x, y, x + 1, y + 1, fill="#d4dad3", outline="")
-        # Part outline, then the safe area inside the edge margin.
-        self.geometry(self.footprint, "#d7ded5", ui.CANVAS, "#a9b5ab")
-        self.geometry(self.surface, "#f9faf8", "#d7ded5")
+    def rings(self, geometry):
+        """Screen-space (exterior, [holes]) for each polygon of a shapely geometry."""
+        for poly in polygons(geometry):
+            yield (
+                [self.screen(x, y) for x, y in poly.exterior.coords],
+                [[self.screen(x, y) for x, y in ring.coords] for ring in poly.interiors],
+            )
+
+    def paint_scene(self, w, h):
+        """Grid, part outline and solid area as one smooth image (redrawn on resize only)."""
+        k = SUPERSAMPLE
+        image = Image.new("RGB", (w * k, h * k), ui.CANVAS)
+        pen = ImageDraw.Draw(image)
+        step, dot = ui.px(24) * k, max(1, ui.px(1)) * k
+        for x in range(step // 2, w * k, step):
+            for y in range(step // 2, h * k, step):
+                pen.rectangle((x, y, x + dot, y + dot), fill=GRID)
+
+        def scaled(ring):
+            return [(x * k, y * k) for x, y in ring]
+
+        edge = max(1, ui.px(1)) * k
+        for outer, _ in self.rings(self.footprint):
+            pen.polygon(scaled(outer), fill=PART, outline=PART_EDGE, width=edge)
+        for outer, holes in self.rings(self.surface):
+            pen.polygon(scaled(outer), fill=SAFE)
+            for hole in holes:
+                pen.polygon(scaled(hole), fill=PART)
         # The eroded region's holes are wider than the real part's holes. Restore actual
         # voids after drawing the margin band so they cannot look solid.
-        for poly in polygons(self.footprint):
-            for ring in poly.interiors:
-                coords = [v for x, y in ring.coords for v in self.screen(x, y)]
-                c.create_polygon(coords, fill=ui.CANVAS, outline="#a9b5ab")
-        valid = self.placed.fits(self.surface)
-        colour = ui.ACCENT if valid else ui.DANGER
-        self.geometry(self.placed.geometry, colour, "#f9faf8")
-        left, bottom, right, top = self.placed.geometry.bounds
-        a, b = self.screen(left, bottom), self.screen(right, top)
-        pad = px(5)
-        x0, x1 = sorted((a[0], b[0]))
-        y0, y1 = sorted((a[1], b[1]))
-        c.create_rectangle(x0 - pad, y0 - pad, x1 + pad, y1 + pad, outline=colour, dash=(4, 3))
-        knob = px(3)
-        for x, y in [
-            (x0 - pad, y0 - pad),
-            (x1 + pad, y0 - pad),
-            (x0 - pad, y1 + pad),
-            (x1 + pad, y1 + pad),
-        ]:
-            c.create_rectangle(x - knob, y - knob, x + knob, y + knob, fill="white", outline=colour)
+        for _, holes in self.rings(self.footprint):
+            for hole in holes:
+                pen.polygon(scaled(hole), fill=ui.CANVAS, outline=PART_EDGE, width=edge)
+        return ImageTk.PhotoImage(image.reduce(k), master=self.canvas)
+
+    def paint_label(self, colour):
+        """The lettering as a small transparent image; returns it and its screen origin."""
+        shapes = list(self.rings(self.placed.geometry))
+        points = [point for outer, _ in shapes for point in outer]
+        left = int(min(x for x, _ in points)) - 1
+        top = int(min(y for _, y in points)) - 1
+        width = int(max(x for x, _ in points)) - left + 2
+        height = int(max(y for _, y in points)) - top + 2
+        k = SUPERSAMPLE
+        image = Image.new("RGBA", (width * k, height * k), (0, 0, 0, 0))
+        pen = ImageDraw.Draw(image)
+
+        def local(ring):
+            return [((x - left) * k, (y - top) * k) for x, y in ring]
+
+        for outer, holes in shapes:
+            pen.polygon(local(outer), fill=colour)
+            for hole in holes:  # counters of A, P, 0 … stay see-through
+                pen.polygon(local(hole), fill=(0, 0, 0, 0))
+        return ImageTk.PhotoImage(image.reduce(k), master=self.canvas), left, top
+
+    def vector(self, geometry, fill, holes, outline="", tags=()):
+        """Fallback without Pillow: plain (aliased) canvas polygons."""
+        for outer, rings in self.rings(geometry):
+            coords = [v for point in outer for v in point]
+            self.canvas.create_polygon(coords, fill=fill, outline=outline, tags=tags)
+            for ring in rings:
+                coords = [v for point in ring for v in point]
+                self.canvas.create_polygon(coords, fill=holes, outline=outline, tags=tags)
+
+    def draw(self, _event=None):
+        """Repaint everything: the scene (cached per canvas size) and the label."""
+        px, c = ui.px, self.canvas
+        self.redraw = None
+        c.delete("all")
+        w, h = max(c.winfo_width(), 2), max(c.winfo_height(), 2)
+        if Image is not None:
+            if self.scene_size != (w, h):
+                self.scene, self.scene_size = self.paint_scene(w, h), (w, h)
+            c.create_image(0, 0, image=self.scene, anchor="nw")
+        else:
+            self.vector(self.footprint, PART, ui.CANVAS, PART_EDGE)
+            self.vector(self.surface, SAFE, PART)
+            for _, holes in self.rings(self.footprint):
+                for hole in holes:
+                    coords = [v for point in hole for v in point]
+                    c.create_polygon(coords, fill=ui.CANVAS, outline=PART_EDGE)
         scale, *_ = self.transform()
         bar = 10 * scale
         c.create_line(px(20), h - px(22), px(20) + bar, h - px(22), fill=ui.INK, width=px(2))
@@ -215,6 +273,37 @@ class PlacementWindow:
             fill=ui.SUBTLE,
             font=(ui.SEMIBOLD, 8),
         )
+        self.draw_label()
+
+    def draw_label(self):
+        """Only the label moves while dragging; the scene image stays as it is."""
+        px, c = ui.px, self.canvas
+        c.delete("label")
+        valid = self.placed.fits(self.surface)
+        colour = ui.ACCENT if valid else ui.DANGER
+        if Image is not None:
+            self.label_image, left, top = self.paint_label(colour)
+            c.create_image(left, top, image=self.label_image, anchor="nw", tags="label")
+        else:
+            self.vector(self.placed.geometry, colour, SAFE, tags="label")
+        left, bottom, right, top = self.placed.geometry.bounds
+        a, b = self.screen(left, bottom), self.screen(right, top)
+        pad = px(5)
+        x0, x1 = sorted((a[0], b[0]))
+        y0, y1 = sorted((a[1], b[1]))
+        c.create_rectangle(
+            x0 - pad, y0 - pad, x1 + pad, y1 + pad, outline=colour, dash=(4, 3), tags="label"
+        )
+        knob = px(3)
+        for x, y in [
+            (x0 - pad, y0 - pad),
+            (x1 + pad, y0 - pad),
+            (x0 - pad, y1 + pad),
+            (x1 + pad, y1 + pad),
+        ]:
+            c.create_rectangle(
+                x - knob, y - knob, x + knob, y + knob, fill="white", outline=colour, tags="label"
+            )
         self.height_label.configure(text=f"{self.placed.height:g} mm")
         self.status.configure(
             text="✓  Fits the solid area" if valid else "✕  Outside the solid area",
@@ -234,7 +323,7 @@ class PlacementWindow:
         if self.drag_anchor:
             x, y = self.world(event.x, event.y)
             self.placed = replace(self.placed, x=x - self.drag_anchor[0], y=y - self.drag_anchor[1])
-            self.draw()
+            self.draw_label()
 
     def resize(self, delta):
         height = min(12.0, max(self.settings.min_text_height_mm, self.placed.height + delta))

@@ -15,6 +15,14 @@
   themselves. Before, changing a setting after an export failed with *Next ID must be
   at least …* until the window was reopened.
 - The Overview highlights a missing computer prefix.
+- **One-page installer:** type this PC's prefix, keep *Connect PrusaSlicer now*
+  ticked, click Install. It asks you to close PrusaSlicer if needed and leaves an
+  already-working setup alone. Silent deployment for shop PCs:
+  `setup.exe /VERYSILENT /PREFIX=B` (`/CONNECT=no` to skip PrusaSlicer). New CLI
+  `--set-prefix`; `--setup-prusaslicer` exits 3 while PrusaSlicer is open.
+- **Smooth placement preview:** the label and part outline are anti-aliased (Pillow)
+  instead of jagged canvas shapes, and dragging only redraws the label, not ~5,000
+  grid dots and the part outline on every mouse move. Toggles are smooth too.
 
 ## 0.4.1 — clearer export step
 

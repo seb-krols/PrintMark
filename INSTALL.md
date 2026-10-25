@@ -24,8 +24,13 @@ also has a `basemark-windows-x64` artifact with the same files.) The downloads a
   Keep `basemark.exe`, `basemark-desktop.exe` and the `_internal` folder together.
 - SHA-256 files for verifying downloads with PowerShell `Get-FileHash`.
 
-Run the setup executable. It installs to `%LOCALAPPDATA%\Programs\BaseMark` without
-administrator rights and adds **BaseMark** to the Start menu. Builds are currently
+Select your usual printer and print presets in PrusaSlicer and close it, then run the
+setup executable. Its single page asks for this PC's **prefix** and offers **Connect
+PrusaSlicer now** (does the automatic setup below). It installs to
+`%LOCALAPPDATA%\Programs\BaseMark` without administrator rights and adds **BaseMark**
+to the Start menu. For several PCs, install silently with each PC's prefix:
+`setup.exe /VERYSILENT /PREFIX=B` (`/CONNECT=no` skips PrusaSlicer). The installer
+never changes an already working PrusaSlicer setup. Builds are currently
 unsigned; SmartScreen may say *Windows protected your PC*: choose **More info → Run anyway**
 after checking the download source and checksum.
 If your institution blocks unsigned software, ask its IT administrator about deployment.

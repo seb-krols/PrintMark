@@ -266,6 +266,20 @@ class Switch(tk.Canvas):
         self.delete("all")
         on, w, h, r = bool(self.variable.get()), self.w, self.h, self.h / 2
         fill = ACCENT if on else "#c5cbc6"
+        try:  # smooth edges via Pillow (canvas ovals are not anti-aliased)
+            from PIL import Image, ImageDraw, ImageTk
+        except ImportError:
+            Image = None
+        if Image is not None:
+            k, knob = 4, px(3)
+            image = Image.new("RGBA", (w * k, h * k), (0, 0, 0, 0))
+            pen = ImageDraw.Draw(image)
+            pen.rounded_rectangle((0, 0, w * k - 1, h * k - 1), radius=r * k, fill=fill)
+            x = (w - h + knob if on else knob) * k
+            pen.ellipse((x, knob * k, x + (h - 2 * knob) * k, (h - knob) * k), fill="white")
+            self.image = ImageTk.PhotoImage(image.reduce(k), master=self)
+            self.create_image(0, 0, image=self.image, anchor="nw")
+            return
         self.create_oval(0, 0, h, h, fill=fill, outline=fill)
         self.create_oval(w - h, 0, w, h, fill=fill, outline=fill)
         self.create_rectangle(r, 0, w - r, h, fill=fill, outline=fill)

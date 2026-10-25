@@ -9,13 +9,13 @@ $env:APPDATA = Join-Path $trial 'User data'
 New-Item $trial -ItemType Directory -Force | Out-Null
 try {
     $setup = (Get-ChildItem dist/basemark-*-windows-x64-setup.exe | Select-Object -Last 1).FullName
-    $options = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$install`"")
+    # /PREFIX is the shop deployment switch; /CONNECT=no keeps the real PrusaSlicer untouched.
+    $options = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$install`"", '/PREFIX=T', '/CONNECT=no')
     $p = Start-Process $setup -ArgumentList $options -Wait -PassThru
     if ($p.ExitCode -ne 0) { throw "Installer failed: $($p.ExitCode)" }
     $binary = Join-Path $install 'basemark.exe'
     $config = Join-Path $env:APPDATA 'BaseMark/config.toml'
-    New-Item (Split-Path $config -Parent) -ItemType Directory -Force | Out-Null
-    'counter_prefix = "T"' | Set-Content $config -Encoding utf8
+    if (!(Select-String -Path $config -Pattern '^counter_prefix = "T"' -Quiet)) { throw 'Installer did not save /PREFIX' }
     $configHash = (Get-FileHash $config).Hash
     $job = Join-Path $trial 'Lab coupon.gcode'
     Copy-Item tests/fixtures/prusaslicer-2.8.1-petg-relative.gcode $job

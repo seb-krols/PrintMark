@@ -22,13 +22,13 @@ source = { editable = "." }
 dependencies = [
     { name = "filelock" },
     { name = "fonttools" },
+    { name = "pillow" },
     { name = "shapely" },
     { name = "tomli-w" },
 ]
 
 [package.optional-dependencies]
 dev = [
-    { name = "pillow" },
     { name = "pyinstaller" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -39,7 +39,7 @@ dev = [
 requires-dist = [
     { name = "filelock", specifier = ">=3.19,<4" },
     { name = "fonttools", specifier = ">=4.59,<5" },
-    { name = "pillow", marker = "extra == 'dev'", specifier = ">=11,<13" },
+    { name = "pillow", specifier = ">=11,<13" },
     { name = "pyinstaller", marker = "extra == 'dev'", specifier = ">=6.15,<7" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4,<10" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6,<8" },

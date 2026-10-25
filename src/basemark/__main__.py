@@ -40,7 +40,13 @@ def parser():
     action.add_argument(
         "--setup-prusaslicer",
         action="store_true",
-        help="create and select '+ BaseMark' copies of the selected PrusaSlicer presets",
+        help="create and select '+ BaseMark' copies of the selected PrusaSlicer presets "
+        "(exit 3 while PrusaSlicer is open)",
+    )
+    action.add_argument(
+        "--set-prefix",
+        metavar="PREFIX",
+        help="save this computer's ID prefix and keep all other settings (used by the installer)",
     )
     p.add_argument("--off", dest="enabled", action="store_false", default=None)
     p.add_argument("--on", dest="enabled", action="store_true")
@@ -92,6 +98,7 @@ def main(argv=None) -> int:
         args.demo,
         args.check_prusaslicer,
         args.setup_prusaslicer,
+        args.set_prefix is not None,
     )
     if args.gcode and any(standalone):
         cli.error("this action does not accept a G-code argument")
@@ -128,8 +135,25 @@ def main(argv=None) -> int:
             rows = lookup_id(log, args.lookup)
             print(json.dumps(rows, indent=2) if args.json else format_records(rows))
             return 0 if rows else 1
+        if args.set_prefix is not None:
+            from dataclasses import replace
+
+            from .config import save_settings
+
+            settings = replace(load_settings(args.config), counter_prefix=args.set_prefix.strip())
+            validate_paths(args.config, settings)
+            save_settings(args.config, settings)
+            print(f"BaseMark: this computer's prefix is now “{settings.counter_prefix}”.")
+            return 0
         if args.check_prusaslicer or args.setup_prusaslicer:
-            from .prusaslicer import SetupError, check, format_findings, hook_command, setup
+            from .prusaslicer import (
+                SetupError,
+                check,
+                format_findings,
+                hook_command,
+                prusaslicer_running,
+                setup,
+            )
 
             command = hook_command(args.config)
             if args.setup_prusaslicer:
@@ -137,7 +161,7 @@ def main(argv=None) -> int:
                     print("\n".join(setup(command)))
                 except SetupError as exc:
                     print(f"BaseMark: PrusaSlicer not changed — {exc}", file=sys.stderr)
-                    return 1
+                    return 3 if prusaslicer_running() else 1
             findings = check(load_settings(args.config), command)
             print(format_findings(findings))
             return 0 if all(f.ok is not False for f in findings) else 2
