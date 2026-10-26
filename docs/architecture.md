@@ -83,7 +83,8 @@ after replacement is reported as **stamped, audit pending**, not â€œunchanged.â€
 
 Holding the counter lock while a popup is open prevents concurrent previews from showing
 the same ID. Another export using that counter skips promptly instead of blocking indefinitely.
-Assign one prefix per PC. Network filesystem locking/rename guarantees are not qualified.
+If several PCs stamp part numbers, give each a `counter_prefix`. Network filesystem
+locking/rename guarantees are not qualified.
 
 ## Source checks
 

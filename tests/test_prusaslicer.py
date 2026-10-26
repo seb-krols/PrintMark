@@ -140,7 +140,7 @@ def test_check_lists_what_to_fix(data):
     problems = " ".join(f.text for f in findings if f.ok is False)
     assert "no BaseMark post-processing script" in problems
     assert "arc fitting is on" in problems and "binary G-code" in problems
-    assert any(f.ok is None and "prefix" in f.text for f in findings)
+    assert not any("prefix" in f.text for f in findings)
 
 
 def test_missing_hook_program_and_thin_bottoms_are_reported(data):

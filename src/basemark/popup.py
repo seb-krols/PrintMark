@@ -52,7 +52,9 @@ class PlacementWindow:
             style="Eyebrow.TLabel",
         ).pack(anchor="w")
         ttk.Label(header, text="Stamp this export", style="Title.TLabel").pack(anchor="w")
-        details = [material, f"ID {part_id}"] + ([job_name] if job_name else [])
+        details = (
+            [material] + ([f"ID {part_id}"] if part_id else []) + ([job_name] if job_name else [])
+        )
         ttk.Label(header, text="   ·   ".join(details), style="Muted.TLabel").pack(anchor="w")
 
         footer = ttk.Frame(root, padding=(px(24), px(12), px(24), px(16)))
@@ -326,7 +328,9 @@ class PlacementWindow:
             self.draw_label()
 
     def resize(self, delta):
-        height = min(12.0, max(self.settings.min_text_height_mm, self.placed.height + delta))
+        # By hand the text may go below the automatic minimum, down to the 2 mm hard limit,
+        # e.g. for a tiny part; the operator sees the result before applying it.
+        height = min(12.0, max(2.0, self.placed.height + delta))
         self.placed = replace(self.placed, height=height)
         self.draw()
 

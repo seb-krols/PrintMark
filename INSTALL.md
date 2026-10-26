@@ -19,18 +19,17 @@ While signed into the GitHub account with access to this private repository, ope
 [Windows installer build](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml)
 also has a `basemark-windows-x64` artifact with the same files.) The downloads are:
 
-- `basemark-0.5.0-windows-x64-setup.exe`: the recommended per-user installer.
-- `basemark-0.5.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
+- `basemark-0.6.0-windows-x64-setup.exe`: the recommended per-user installer.
+- `basemark-0.6.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
   Keep `basemark.exe`, `basemark-desktop.exe` and the `_internal` folder together.
 - SHA-256 files for verifying downloads with PowerShell `Get-FileHash`.
 
 Select your usual printer and print presets in PrusaSlicer and close it, then run the
-setup executable. Its single page asks for this PC's **prefix** and offers **Connect
-PrusaSlicer now** (does the automatic setup below). It installs to
-`%LOCALAPPDATA%\Programs\BaseMark` without administrator rights and adds **BaseMark**
-to the Start menu. For several PCs, install silently with each PC's prefix:
-`setup.exe /VERYSILENT /PREFIX=B` (`/CONNECT=no` skips PrusaSlicer). The installer
-never changes an already working PrusaSlicer setup. Builds are currently
+setup executable. Its single page offers **Connect PrusaSlicer now** (does the automatic
+setup below); click **Install**. It installs to `%LOCALAPPDATA%\Programs\BaseMark` without
+administrator rights and adds **BaseMark** to the Start menu. Unattended:
+`setup.exe /VERYSILENT` (`/CONNECT=no` skips PrusaSlicer). The installer never changes an
+already working PrusaSlicer setup. Builds are currently
 unsigned; SmartScreen may say *Windows protected your PC*: choose **More info → Run anyway**
 after checking the download source and checksum.
 If your institution blocks unsigned software, ask its IT administrator about deployment.
@@ -41,7 +40,8 @@ Private repository artifacts require GitHub access and expire; keep the tested l
 ## 2. Connect PrusaSlicer
 
 1. Open **BaseMark** from Start (or `basemark-desktop.exe` in the portable folder).
-2. On **Overview**, enter a unique PC prefix: `A`, `B`, etc. Changes save automatically.
+2. On **Overview**, check the label (`PLA` by default; switch on **Add a part number** for
+   `PLA 001`). Click **Save changes** (Ctrl+S) after changing anything.
 
 **Automatic (recommended):** in PrusaSlicer select the printer and print presets you use,
 close PrusaSlicer, then on BaseMark's **Overview** click **Set up PrusaSlicer**. BaseMark
@@ -75,7 +75,7 @@ Example only—use the path copied from your own installation:
 PrusaSlicer supplies the temporary G-code filename automatically. Do not add a filename
 yourself. Each saved **print preset** needs the hook; installing BaseMark does not alter
 PrusaSlicer profiles. Add `--mode auto` after the quoted executable to skip placement prompts.
-Filament Notes can contain `basemark: layers=2; size=6` for profile-specific settings.
+Filament Notes can contain `basemark: layers=2; size=4` for profile-specific settings.
 
 ## 3. Check and print a coupon
 
@@ -85,7 +85,7 @@ Filament Notes can contain `basemark: layers=2; size=6` for profile-specific set
 2. In BaseMark **Advanced → Check a G-code file**, select that original export. The check uses
    saved settings and embedded slicer metadata, leaves the file unchanged and consumes no ID.
    It verifies software compatibility and fit; it does not validate printer behavior.
-3. Export with the hook enabled. Confirm the material and ID in the popup, drag if needed,
+3. Export with the hook enabled. Confirm the label in the popup, drag if needed,
    and apply. BaseMark's Overview shows under *Recent exports* whether it stamped or
    skipped. `last-export.json` also records the latest result.
 4. Open the **final exported file** in PrusaSlicer's G-code Viewer. Check the text-shaped
@@ -100,7 +100,7 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
 
 ## Daily use, updates and removal
 
-- **Find a part:** open **Find part** in BaseMark and enter its full printed ID (`A042`).
+- **Find a part** (part numbers on): open **Find part** and enter the printed number (`042`).
   It searches the CSV selected in saved settings and shows the original export's details.
   An unknown ID may belong to another PC; each computer keeps its own local history.
 - **Skip one job:** choose **Skip label** in the popup. For automatic mode, temporarily
@@ -111,8 +111,8 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
   installation path, settings and ID history. Keep a copy of the last qualified installer.
 - **Uninstall:** first remove the hook from every affected PrusaSlicer preset, then uninstall
   BaseMark in Windows Settings. Uninstall deliberately preserves AppData records.
-- **Move to another PC:** install normally and assign a different prefix. Do not share a
-  live counter over a network drive or silently reuse another PC's numbering series.
+- **Move to another PC:** install normally. If both PCs stamp part numbers, set a different
+  `counter_prefix` in one PC's `config.toml`; never share a live counter over a network drive.
 
 ## Troubleshooting
 

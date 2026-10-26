@@ -1,6 +1,6 @@
 ; Per-user install: no administrator rights; config and audit history live in AppData.
-; One page: this PC's ID prefix and "Connect PrusaSlicer now", then Install.
-; Silent shop deployment: setup.exe /VERYSILENT /PREFIX=B  (add /CONNECT=no to skip PrusaSlicer)
+; One page: "Connect PrusaSlicer now", then Install.
+; Silent install: setup.exe /VERYSILENT  (add /CONNECT=no to leave PrusaSlicer untouched)
 #ifndef AppVersion
   #error AppVersion must be supplied by build_windows.ps1
 #endif
@@ -48,7 +48,6 @@ Filename: "{app}\basemark-desktop.exe"; Description: "Open BaseMark"; Flags: now
 [Code]
 var
   SetupPage: TWizardPage;
-  PrefixEdit: TNewEdit;
   ConnectBox: TNewCheckBox;
 
 function App(): String;
@@ -56,78 +55,15 @@ begin
   Result := ExpandConstant('{app}\basemark.exe');
 end;
 
-{ The prefix already saved on this PC (upgrades), read from config.toml. }
-function ExistingPrefix(): String;
-var
-  Lines: TArrayOfString;
-  I, First, Last: Integer;
-  Line: String;
-begin
-  Result := '';
-  if not LoadStringsFromFile(ExpandConstant('{userappdata}\BaseMark\config.toml'), Lines) then
-    Exit;
-  for I := 0 to GetArrayLength(Lines) - 1 do
-  begin
-    Line := Trim(Lines[I]);
-    if (Pos('counter_prefix', Line) > 0) and (Pos('#', Line) <> 1) then
-    begin
-      First := Pos('"', Line);
-      Line := Copy(Line, First + 1, Length(Line));
-      Last := Pos('"', Line);
-      if (First > 0) and (Last > 0) then
-        Result := Copy(Line, 1, Last - 1);
-    end;
-  end;
-end;
-
-{ Same rule as BaseMark: up to 12 letters, digits, "_" or "-". }
-function ValidPrefix(Value: String): Boolean;
-var
-  I: Integer;
-  C: Char;
-begin
-  Result := Length(Value) <= 12;
-  for I := 1 to Length(Value) do
-  begin
-    C := Value[I];
-    if not (((C >= 'A') and (C <= 'Z')) or ((C >= 'a') and (C <= 'z')) or
-            ((C >= '0') and (C <= '9')) or (C = '_') or (C = '-')) then
-      Result := False;
-  end;
-end;
-
 procedure InitializeWizard;
 var
-  Intro, Example, Hint: TNewStaticText;
+  Hint: TNewStaticText;
 begin
-  SetupPage := CreateCustomPage(wpWelcome, 'Set up this computer',
-    'Both can be changed later in BaseMark.');
-
-  Intro := TNewStaticText.Create(SetupPage);
-  Intro.Parent := SetupPage.Surface;
-  Intro.WordWrap := True;
-  Intro.Width := SetupPage.SurfaceWidth;
-  Intro.Caption := 'Computer prefix. Part IDs start with it, so give every PC in the shop ' +
-    'its own letter:';
-
-  PrefixEdit := TNewEdit.Create(SetupPage);
-  PrefixEdit.Parent := SetupPage.Surface;
-  PrefixEdit.Top := Intro.Top + Intro.Height + ScaleY(8);
-  PrefixEdit.Width := ScaleX(90);
-  PrefixEdit.MaxLength := 12;
-  PrefixEdit.Text := ExpandConstant('{param:PREFIX|}');
-  if PrefixEdit.Text = '' then
-    PrefixEdit.Text := ExistingPrefix();
-
-  Example := TNewStaticText.Create(SetupPage);
-  Example.Parent := SetupPage.Surface;
-  Example.Top := PrefixEdit.Top + ScaleY(3);
-  Example.Left := PrefixEdit.Left + PrefixEdit.Width + ScaleX(10);
-  Example.Caption := 'e.g. A gives labels like >PLA< A042';
+  SetupPage := CreateCustomPage(wpWelcome, 'Connect PrusaSlicer',
+    'BaseMark stamps the material into the bottom of every exported part.');
 
   ConnectBox := TNewCheckBox.Create(SetupPage);
   ConnectBox.Parent := SetupPage.Surface;
-  ConnectBox.Top := PrefixEdit.Top + PrefixEdit.Height + ScaleY(26);
   ConnectBox.Width := SetupPage.SurfaceWidth;
   ConnectBox.Height := ScaleY(22);
   ConnectBox.Caption := 'Connect PrusaSlicer now (recommended)';
@@ -141,7 +77,9 @@ begin
   Hint.WordWrap := True;
   Hint.Caption := 'Adds "+ BaseMark" copies of the print and printer presets selected in ' +
     'PrusaSlicer (stamp on export, arc fitting off, plain G-code) and selects them. ' +
-    'Your own presets are not changed. PrusaSlicer needs to be closed for this step.';
+    'Your own presets are not changed. PrusaSlicer needs to be closed for this step.' +
+    #13#10#13#10 + 'Labels show the material, e.g. PLA. A part number can be switched on ' +
+    'later in BaseMark.';
 end;
 
 { The Ready page is disabled, so this page starts the install. }
@@ -149,16 +87,6 @@ procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = SetupPage.ID then
     WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
-end;
-
-function NextButtonClick(CurPageID: Integer): Boolean;
-begin
-  Result := True;
-  if (CurPageID = SetupPage.ID) and not ValidPrefix(Trim(PrefixEdit.Text)) then
-  begin
-    MsgBox('Use up to 12 letters, numbers, "_" or "-" for the prefix.', mbError, MB_OK);
-    Result := False;
-  end;
 end;
 
 procedure ConnectPrusaSlicer();
@@ -188,15 +116,7 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var
-  Code: Integer;
-  Prefix: String;
 begin
-  if CurStep <> ssPostInstall then
-    Exit;
-  Prefix := Trim(PrefixEdit.Text);
-  if (Prefix <> ExistingPrefix()) and ValidPrefix(Prefix) then
-    Exec(App(), '--set-prefix "' + Prefix + '"', '', SW_HIDE, ewWaitUntilTerminated, Code);
-  if ConnectBox.Checked then
+  if (CurStep = ssPostInstall) and ConnectBox.Checked then
     ConnectPrusaSlicer();
 end;

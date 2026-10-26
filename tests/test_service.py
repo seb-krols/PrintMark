@@ -8,7 +8,7 @@ import pytest
 from conftest import coupon
 
 from basemark.__main__ import main
-from basemark.config import Settings, save_settings
+from basemark.config import NUMBERED, Settings, save_settings
 from basemark.counter import Counter
 from basemark.errors import SafeSkip
 from basemark.service import process
@@ -18,7 +18,7 @@ def test_full_export_id_log_and_duplicate_protection(job_file, tmp_path):
     result = process(
         job_file,
         tmp_path / "config.toml",
-        {"mode": "auto", "counter_prefix": "A"},
+        {"mode": "auto", "template": NUMBERED, "counter_prefix": "A"},
         {"SLIC3R_PP_OUTPUT_NAME": "final-output.gcode"},
     )
     assert result.status == "stamped"
@@ -30,7 +30,7 @@ def test_full_export_id_log_and_duplicate_protection(job_file, tmp_path):
     assert "coupon.stl" in rows[0]["object_names"]
     stamped = job_file.read_bytes()
     with pytest.raises(SafeSkip, match="already"):
-        process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
+        process(job_file, tmp_path / "config.toml", {"mode": "auto", "template": NUMBERED}, {})
     assert job_file.read_bytes() == stamped
 
 
@@ -70,7 +70,7 @@ def test_failure_before_replace_keeps_source_and_counter(job_file, tmp_path, mon
         service, "atomic_write", lambda *a, **k: (_ for _ in ()).throw(OSError("disk"))
     )
     with pytest.raises(OSError):
-        process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
+        process(job_file, tmp_path / "config.toml", {"mode": "auto", "template": NUMBERED}, {})
     assert job_file.read_bytes() == original
     assert json.loads((tmp_path / "counter.json").read_text())["next"] == 1
 
@@ -78,7 +78,7 @@ def test_failure_before_replace_keeps_source_and_counter(job_file, tmp_path, mon
 def test_audit_failure_is_reported_as_stamped_not_unchanged(job_file, tmp_path, monkeypatch):
     original_finish = Counter.finish
     monkeypatch.setattr(Counter, "finish", lambda _: (_ for _ in ()).throw(OSError("log locked")))
-    result = process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
+    result = process(job_file, tmp_path / "config.toml", {"mode": "auto", "template": NUMBERED}, {})
     assert result.status == "stamped-pending-audit"
     assert job_file.read_text().startswith("; BASEMARK stamp")
     monkeypatch.setattr(Counter, "finish", original_finish)
@@ -96,7 +96,7 @@ def test_failure_after_replace_retains_recoverable_journal(job_file, tmp_path, m
         raise OSError("directory fsync failure")
 
     monkeypatch.setattr(service, "atomic_write", replace_then_fail)
-    result = process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
+    result = process(job_file, tmp_path / "config.toml", {"mode": "auto", "template": NUMBERED}, {})
     assert result.status == "stamped-pending-audit"
     assert job_file.read_text().startswith("; BASEMARK stamp")
     with Counter(tmp_path / "counter.json") as recovered:
@@ -105,7 +105,7 @@ def test_failure_after_replace_retains_recoverable_journal(job_file, tmp_path, m
 
 def test_standalone_serialized_filament_notes(job_file, tmp_path):
     job_file.write_text(job_file.read_text() + '; filament_notes = "basemark: enabled=false"\n')
-    result = process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
+    result = process(job_file, tmp_path / "config.toml", {"mode": "auto", "template": NUMBERED}, {})
     assert result.status == "disabled"
 
 
@@ -145,7 +145,13 @@ def test_notes_disable_and_cli_enable(job_file, tmp_path):
 def test_path_collisions_never_overwrite_source(job_file, tmp_path):
     original = job_file.read_bytes()
     with pytest.raises(SafeSkip, match="different paths"):
-        process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {}, preview=job_file)
+        process(
+            job_file,
+            tmp_path / "config.toml",
+            {"mode": "auto", "template": NUMBERED},
+            {},
+            preview=job_file,
+        )
     with pytest.raises(SafeSkip, match="different paths"):
         process(job_file, tmp_path / "config.toml", {"counter_file": str(job_file)}, {})
     assert job_file.read_bytes() == original
@@ -160,5 +166,15 @@ def test_hardlinked_lock_cannot_truncate_gcode(job_file, tmp_path):
     except OSError:
         pytest.skip("hard links are not available on this filesystem")
     with pytest.raises(SafeSkip, match="different paths"):
-        process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
+        process(job_file, tmp_path / "config.toml", {"mode": "auto", "template": NUMBERED}, {})
     assert job_file.read_bytes() == original
+
+
+def test_material_only_label_uses_no_id(job_file, tmp_path):
+    result = process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
+    assert (result.status, result.part_id) == ("stamped", "")
+    assert result.message.startswith("Stamped PLA · 2 layers · 3 mm")
+    assert job_file.read_text(encoding="utf-8").startswith("; BASEMARK stamp PLA; layers=2;")
+    assert not (tmp_path / "counter.json").exists() and not (tmp_path / "log.csv").exists()
+    with pytest.raises(SafeSkip, match="already"):
+        process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})

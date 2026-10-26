@@ -17,7 +17,7 @@ def test_all_four_layers(tmp_path):
     assert settings.text_height_mm == 8
     assert settings.layers == 3
     assert settings.counter_prefix == "A"
-    assert settings.margin_mm == 2  # built-in
+    assert settings.margin_mm == 1.5  # built-in
 
 
 def test_escaped_notes_and_paths(tmp_path):
@@ -50,12 +50,12 @@ def test_slicer_quoted_filament_notes():
         {"material_map": []},
         {"template": "{material.__class__} {id}"},
         {"template": "{material} {id!r}"},
-        {"template": "{material}"},
+        {"template": "{id}"},
         {"template": "{material} {id:2}"},
         {"enabled": "false"},
         {"template": "{"},
         {"template": "{{material}} {id}"},
-        {"template": "{material} {{id}}"},
+        {"text_height_mm": 1.5},
     ],
 )
 def test_invalid_config_rejected(data):
@@ -112,15 +112,40 @@ def test_windows_utf8_bom_config(tmp_path):
     assert load_settings(path).counter_prefix == "A"
 
 
-def test_set_prefix_keeps_other_settings(tmp_path, capsys):
-    from basemark.__main__ import main
-    from basemark.config import load_settings
+def test_material_only_is_the_default_and_numbers_are_optional():
+    assert Settings().template == "{material}"
+    assert not Settings().numbered
+    assert replace(Settings(), template="{material} {id}").validate().numbered
+    assert (Settings().text_height_mm, Settings().min_text_height_mm) == (3.0, 3.0)
 
-    config = tmp_path / "config.toml"
-    config.write_text('mode = "auto"\ntext_height_mm = 8.0\n', encoding="utf-8")
-    assert main(["--config", str(config), "--set-prefix", " B "]) == 0
-    settings = load_settings(config)
-    assert (settings.counter_prefix, settings.mode, settings.text_height_mm) == ("B", "auto", 8.0)
-    assert main(["--config", str(config), "--set-prefix", "not ok!"]) == 1
-    assert "prefix must" in capsys.readouterr().err
-    assert load_settings(config).counter_prefix == "B"
+
+def test_old_full_config_gets_new_defaults_but_keeps_choices(tmp_path):
+    # Up to 0.5.0 every value was saved, defaults included, without config_version.
+    path = tmp_path / "config.toml"
+    path.write_text(
+        'template = ">{material}< {id}"\ntext_height_mm = 6.0\nmin_text_height_mm = 4.0\n'
+        "margin_mm = 2.0\nlayers = 3\ncounter_next = 7\n",
+        encoding="utf-8",
+    )
+    settings = load_settings(path)
+    assert (settings.template, settings.text_height_mm, settings.margin_mm) == (
+        "{material}",
+        3.0,
+        1.5,
+    )
+    assert (settings.layers, settings.counter_next) == (3, 7)
+    path.write_text('text_height_mm = 5.0\ntemplate = "{material} {id}"\n', encoding="utf-8")
+    assert load_settings(path).text_height_mm == 5.0
+    assert load_settings(path).numbered
+
+
+def test_saved_config_holds_only_changes_and_survives_reload(tmp_path):
+    path = tmp_path / "config.toml"
+    save_settings(
+        path, Settings(template="{material} {id}", text_height_mm=6.0, min_text_height_mm=4.0)
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "config_version = 2" in text and "layers" not in text
+    # 6.0/4.0 match the OLD defaults, but a versioned file is never migrated.
+    settings = load_settings(path)
+    assert (settings.text_height_mm, settings.min_text_height_mm) == (6.0, 4.0)

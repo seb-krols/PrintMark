@@ -9,11 +9,12 @@ Owner: Sebastians Krols, UBC IGEN 3D Print Shop.
 3. Disable binary G-code, arc fitting, vase mode and sequential printing. Use one material/tool.
 4. Run the hook with `--dump-env` once. Review `%APPDATA%\BaseMark\environment.json` locally.
    Confirm filament type and width/height values. Use the normal command again afterwards.
-5. Choose a unique PC prefix. Export the [80 × 40 × 2 mm coupon](../examples/basemark-coupon.stl)
+5. Export the [80 × 40 × 2 mm coupon](../examples/basemark-coupon.stl)
    with the shop's actual profile and at least four solid bottom layers for a three-layer stamp.
 6. Reopen the final exported file in PrusaSlicer's G-code Viewer. Check layers 1–N for the
    mirrored text gap, layer N+1 for an intact roof, and the purge/skirt/upper layers for changes.
-7. Print an unstamped control and a 6 mm / 2-layer coupon first. Observe the early layers.
+7. Print an unstamped control and a 3 mm / 2-layer coupon first (also try 2.5 mm by hand to
+   see where lettering stops being legible on your printer). Observe the early layers.
 
 **Do not print regression G-code files from `tests/fixtures`.** Their startup sequences are
 minimal software fixtures, without a qualified heating/homing procedure. Always slice the STL

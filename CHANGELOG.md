@@ -1,5 +1,27 @@
 # Changes
 
+## 0.6.0 — material-only labels, small text, Save button
+
+- **Labels show just the material** (`PLA`) by default. **Add a part number** (Overview or
+  Stamp) switches to `PLA 001`, `PLA 002`, …; numbers are only used, counted and logged
+  when it is on. Existing installs that kept the old `>{material}< {id}` default get
+  the new one; a template you chose yourself is kept.
+- **Smaller default text: 3 mm** (was 6 mm, minimum 4 mm), the smallest that keeps Lato
+  Bold strokes (~0.55 mm) wider than one first-layer line. Text may be set to 2–12 mm;
+  the placement window's **−** goes to 2 mm by hand. Edge margin 1.5 mm (was 2 mm).
+  Smallest part for `PLA`: about 10 × 6 mm (`>PLA< A001` needed about 34 × 8 mm).
+- **Save button:** settings are no longer saved when a field loses focus (which missed
+  edits when the window was closed, and silently rejected invalid values). Changes show
+  *Unsaved changes*; **Save changes** (Ctrl+S or Enter) saves, **Discard** reverts, and
+  closing with unsaved changes asks to save. Invalid values keep the window open.
+- **No computer prefix:** removed from the installer, the Overview and the setup check
+  (the shop has one PC). `counter_prefix` still works in `config.toml`. Removed
+  `--set-prefix` and the installer's `/PREFIX`.
+- The config file now stores only values that differ from the defaults
+  (`config_version = 2`).
+- Notices and *Recent exports* show the exported file name instead of PrusaSlicer's
+  temporary `.gcode.pp` name.
+
 ## 0.5.0 — export notices and faster large files
 
 - After each export a small notice in the screen corner says **Stamped >PLA< A001** or

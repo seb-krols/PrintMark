@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from basemark.config import load_settings
+from basemark.config import NUMBERED, Settings, load_settings, save_settings
 from basemark.service import demo_data
 
 
@@ -37,7 +37,10 @@ def test_placement_drag_resize_rotate_invalid_accept_and_skip(root):
     app.drag(SimpleNamespace(x=x + 20, y=y))
     assert app.placed.x < placed.x  # underside view mirrors X
     app.resize(-0.5)
-    assert app.placed.height == 5.5
+    assert app.placed.height == placed.height - 0.5
+    for _ in range(10):
+        app.resize(-0.5)
+    assert app.placed.height == 2.0  # by hand down to the hard limit
     app.rotate()
     assert app.placed.angle == 90
     app.placed = replace(app.placed, x=999)
@@ -82,11 +85,14 @@ def test_settings_save_and_hook(root, tmp_path):
     path = tmp_path / "config.toml"
     app = SettingsWindow(root, path)
     root.update()
-    app.values["counter_prefix"].set("B")
+    assert str(app.save_button.cget("state")) == "disabled"
     app.values["mode"].set("auto")
+    assert not load_settings(path).mode == "auto"  # nothing is written before Save
+    assert str(app.save_button.cget("state")) != "disabled"
+    assert app.feedback.cget("text").startswith("Unsaved")
     app.save()
-    assert load_settings(path).counter_prefix == "B"
     assert load_settings(path).mode == "auto"
+    assert str(app.save_button.cget("state")) == "disabled"
     assert str(path) in app.hook.get()
     assert app.feedback.cget("text").startswith("Saved")
 
@@ -126,7 +132,7 @@ def test_find_part_displays_export_without_consuming_id(root, tmp_path, job_file
     from basemark.settings_ui import SettingsWindow
 
     config = tmp_path / "config.toml"
-    process(job_file, config, {"mode": "auto", "counter_prefix": "A"}, {})
+    process(job_file, config, {"mode": "auto", "template": NUMBERED, "counter_prefix": "A"}, {})
     before = (tmp_path / "counter.json").read_bytes()
     app = SettingsWindow(root, config)
     app.lookup_value.set("A001")
@@ -144,14 +150,58 @@ def test_open_window_follows_exports_and_keeps_saving(root, tmp_path, job_file):
     from basemark.settings_ui import SettingsWindow
 
     config = tmp_path / "config.toml"
+    save_settings(config, Settings(template=NUMBERED))
     app = SettingsWindow(root, config)
     root.update()
-    assert app.next_id.cget("text") == "001"
+    assert app.next_id.cget("text").startswith("Next number 001")
     assert process(job_file, config, {"mode": "auto"}, {}).status == "stamped"
     app.watch_exports()
     assert app.values["counter_next"].get() == "2"
-    assert app.next_id.cget("text") == "002"
-    app.values["counter_prefix"].set("B")
+    assert app.next_id.cget("text").startswith("Next number 002")
+    assert not app.dirty()  # following the counter is not an unsaved change
+    app.values["layers"].set("3")
     app.save()
     assert app.feedback.cget("text").startswith("Saved")
-    assert load_settings(config).counter_prefix == "B"
+    assert load_settings(config).layers == 3
+
+
+def test_part_number_switch_edits_the_label(root, tmp_path):
+    from basemark.settings_ui import SettingsWindow
+
+    config = tmp_path / "config.toml"
+    app = SettingsWindow(root, config)
+    root.update()
+    assert app.preview.cget("text") == "PLA" and not app.numbered.get()
+    app.numbered.set(True)
+    app.toggle_numbered()
+    assert app.values["template"].get() == NUMBERED
+    assert app.preview.cget("text") == "PLA 001"
+    app.values["template"].set("{material}")  # typing the label updates the switch
+    assert not app.numbered.get()
+    app.values["template"].set("{material} {date} {id}")
+    app.numbered.set(False)
+    app.toggle_numbered()
+    assert app.values["template"].get() == "{material} {date}"
+    app.discard()
+    assert app.values["template"].get() == "{material}" and not app.dirty()
+
+
+def test_closing_with_unsaved_changes_asks_first(root, tmp_path, monkeypatch):
+    from basemark.settings_ui import SettingsWindow, messagebox
+
+    config = tmp_path / "config.toml"
+    app = SettingsWindow(root, config)
+    root.update()
+    app.values["layers"].set("3")
+    answers = iter([None, True])
+    monkeypatch.setattr(messagebox, "askyesnocancel", lambda *a, **k: next(answers))
+    app.close()  # Cancel: stays open, nothing saved
+    assert root.winfo_exists() and not config.exists()
+    app.values["text_height_mm"].set("1")  # invalid: Save fails, window stays open
+    app.close()
+    assert root.winfo_exists() and not config.exists()
+    assert app.feedback.cget("text").startswith("Not saved")
+    app.values["text_height_mm"].set("3")
+    monkeypatch.setattr(messagebox, "askyesnocancel", lambda *a, **k: True)
+    app.close()
+    assert load_settings(config).layers == 3

@@ -8,6 +8,7 @@ import pytest
 
 from basemark.__main__ import main
 from basemark.audit import LOG_FIELDS, format_records, lookup_id, read_log
+from basemark.config import NUMBERED
 from basemark.counter import Counter
 from basemark.errors import SafeSkip
 from basemark.service import process
@@ -75,7 +76,7 @@ def test_bad_log_prevents_gcode_mutation(job_file, tmp_path, content):
     log.write_text(content, encoding="utf-8")
     before, log_before = job_file.read_bytes(), log.read_bytes()
     with pytest.raises(SafeSkip):
-        process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
+        process(job_file, tmp_path / "config.toml", {"mode": "auto", "template": NUMBERED}, {})
     assert job_file.read_bytes() == before
     assert log.read_bytes() == log_before
     assert not (tmp_path / "counter.json").exists()
@@ -84,16 +85,18 @@ def test_bad_log_prevents_gcode_mutation(job_file, tmp_path, content):
 def test_lost_counter_cannot_reuse_a_logged_id(job_file, tmp_path):
     config = tmp_path / "config.toml"
     original = job_file.read_bytes()
-    process(job_file, config, {"mode": "auto"}, {})
+    process(job_file, config, {"mode": "auto", "template": NUMBERED}, {})
     log_before = (tmp_path / "log.csv").read_bytes()
     (tmp_path / "counter.json").unlink()
     job_file.write_bytes(original)
     with pytest.raises(SafeSkip, match="ID 001 already exists"):
-        process(job_file, config, {"mode": "auto"}, {})
+        process(job_file, config, {"mode": "auto", "template": NUMBERED}, {})
     assert job_file.read_bytes() == original
     assert (tmp_path / "log.csv").read_bytes() == log_before
     assert not (tmp_path / "counter.json").exists()
-    result = process(job_file, config, {"mode": "auto", "counter_next": 2}, {})
+    result = process(
+        job_file, config, {"mode": "auto", "template": NUMBERED, "counter_next": 2}, {}
+    )
     assert result.part_id == "002"
 
 

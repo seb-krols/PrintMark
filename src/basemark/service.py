@@ -65,8 +65,12 @@ def process(
     job = job_from(env, text, settings, str(path))
     program = parse(text, job.width, retain_layers=settings.layers + 1)
     footprint, surface = placement_surface(program, settings.layers, settings.margin_mm)
-    counter_path, log_path = settings.paths(config.parent)
     validate_paths(config, settings, path, preview)
+    if not settings.numbered:
+        return stamp_material_only(
+            path, original, job, program, footprint, surface, settings, dry_run, preview, choose
+        )
+    counter_path, log_path = settings.paths(config.parent)
     with Counter(counter_path, settings.counter_next, recover=not dry_run) as counter:
         if counter.state.get("pending"):
             raise SafeSkip("counter recovery is pending; open Settings → Diagnostics to recover")
@@ -87,9 +91,7 @@ def process(
             job_name = Path(job.output_name or path).name
             placed = choose(footprint, surface, placed, settings, job.material, part_id, job_name)
             if placed is None:
-                from .notify import USER_SKIP
-
-                return Outcome("skipped", USER_SKIP)
+                return user_skip()
         if not placed.fits(surface):
             raise SafeSkip("placement is outside the solid surface or margin")
         output = rewrite(program, placed.geometry, settings.layers, part_id)
@@ -159,14 +161,64 @@ def process(
     )
 
 
+def user_skip() -> Outcome:
+    from .notify import USER_SKIP
+
+    return Outcome("skipped", USER_SKIP)
+
+
+def stamp_material_only(
+    path, original, job, program, footprint, surface, settings, dry_run, preview, choose
+) -> Outcome:
+    """A label without a part number: no ID is used, so there is no counter or log entry."""
+    label = settings.template.format(
+        material=job.material,
+        id="",
+        prefix=settings.counter_prefix,
+        date=datetime.now(UTC).date().isoformat(),
+    ).strip()
+    placed = auto_place(label, surface, settings.text_height_mm, settings.min_text_height_mm)
+    if settings.mode == "interactive" and not dry_run:
+        if choose is None:
+            from .popup import choose_placement
+
+            choose = choose_placement
+        job_name = Path(job.output_name or path).name
+        placed = choose(footprint, surface, placed, settings, job.material, "", job_name)
+        if placed is None:
+            return user_skip()
+    if not placed.fits(surface):
+        raise SafeSkip("placement is outside the solid surface or margin")
+    output = rewrite(program, placed.geometry, settings.layers, label)
+    if preview:
+        atomic_write(preview, svg_preview(footprint, surface, placed).encode("utf-8"))
+    if dry_run:
+        return Outcome(
+            "preview",
+            f"Preview {label}: {output.changed_moves} moves.",
+            "",
+            output.removed_e,
+            output.changed_moves,
+        )
+    if path.read_bytes() != original:
+        raise SafeSkip("G-code changed during placement; export again")
+    atomic_write(path, output.text.encode("utf-8"), mode=stat.S_IMODE(path.stat().st_mode))
+    return Outcome(
+        "stamped",
+        f"Stamped {label} · {settings.layers} layers · {placed.height:g} mm · "
+        f"{output.changed_moves} moves.",
+        "",
+        output.removed_e,
+        output.changed_moves,
+    )
+
+
 def demo_data():
     from shapely.geometry import Point, box
 
     footprint = box(20, 20, 110, 80).buffer(5, quad_segs=12)
     footprint = footprint.difference(Point(33, 67).buffer(4)).difference(Point(97, 67).buffer(4))
     surface = footprint.buffer(-2)
-    settings = Settings(counter_prefix="A")
-    placed = auto_place(
-        ">PETG< A042", surface, settings.text_height_mm, settings.min_text_height_mm
-    )
+    settings = Settings()
+    placed = auto_place("PETG", surface, settings.text_height_mm, settings.min_text_height_mm)
     return footprint, surface, placed, settings

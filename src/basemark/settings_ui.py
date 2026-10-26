@@ -15,7 +15,15 @@ from tkinter import filedialog, messagebox, ttk
 from . import __version__
 from . import ui_common as ui
 from .audit import format_records, lookup_id, read_log
-from .config import Settings, load_settings, save_settings, validate_paths
+from .config import (
+    MATERIAL_ONLY,
+    NUMBERED,
+    Settings,
+    load_settings,
+    save_settings,
+    template_fields,
+    validate_paths,
+)
 from .counter import Counter
 from .prusaslicer import SetupError, check, hook_command, setup
 
@@ -70,6 +78,8 @@ class SettingsWindow:
         with Counter(counter_path, self.settings.counter_next, recover=False) as counter:
             self.saved_next = counter.next
         self.values["counter_next"].set(str(self.saved_next))
+        self.numbered = tk.BooleanVar(value=self.settings.numbered)
+        self.snapshot = self.form()
         self.hook = tk.StringVar(value=hook_command(path))
         self.lookup_value = tk.StringVar()
 
@@ -108,7 +118,7 @@ class SettingsWindow:
             self.nav[key] = item
         ttk.Label(
             sidebar,
-            text="Settings are saved automatically and apply to the next export.",
+            text="Changes apply to the next export once you click Save changes (Ctrl+S).",
             style="Side.Small.TLabel",
             wraplength=px(150),
         ).pack(side="bottom", anchor="w", padx=px(8))
@@ -117,7 +127,13 @@ class SettingsWindow:
         main.pack(side="left", fill="both", expand=True)
         status_bar = ttk.Frame(main, padding=(px(28), px(8), px(28), px(10)))
         status_bar.pack(side="bottom", fill="x")
-        self.feedback = ttk.Label(status_bar, text="", style="Small.TLabel")
+        self.save_button = ttk.Button(
+            status_bar, text="Save changes", style="Accent.TButton", command=self.save
+        )
+        self.save_button.pack(side="right")
+        self.discard_button = ttk.Button(status_bar, text="Discard", command=self.discard)
+        self.discard_button.pack(side="right", padx=(0, px(8)))
+        self.feedback = ttk.Label(status_bar, text="", style="Small.TLabel", wraplength=px(480))
         self.feedback.pack(side="left")
         tk.Frame(main, background=ui.LINE, height=1).pack(side="bottom", fill="x")
         self.pages: dict[str, ui.ScrollPage] = {}
@@ -128,8 +144,13 @@ class SettingsWindow:
         self.build_find(self.pages["find"].body)
         self.build_advanced(self.pages["advanced"].body)
         root.bind("<Control-f>", lambda _e: self.show("find"))
+        root.bind("<Control-s>", lambda _e: self.save())
+        root.protocol("WM_DELETE_WINDOW", self.close)
+        for variable in self.values.values():
+            variable.trace_add("write", lambda *_: self.changed())
         ui.center(root, 980, 680)
         self.show("overview")
+        self.changed()
         root.after(150, self.refresh_status)
         self.seen = self.export_marks()
         root.after(WATCH_MS, self.watch_exports)
@@ -173,8 +194,10 @@ class SettingsWindow:
             edited = self.values["counter_next"].get().strip() != str(self.saved_next)
             self.saved_next = latest
             self.settings = replace(self.settings, counter_next=latest)
+            self.snapshot["counter_next"] = str(latest)
             if not edited:
                 self.values["counter_next"].set(str(latest))
+            self.changed()
         return True
 
     # ---------- layout helpers ----------
@@ -187,7 +210,6 @@ class SettingsWindow:
 
     def entry(self, parent, key, width=8):
         field = ttk.Entry(parent, textvariable=self.values[key], width=width)
-        field.bind("<FocusOut>", lambda _e: self.save())
         field.bind("<Return>", lambda _e: self.save())
         return field
 
@@ -239,8 +261,8 @@ class SettingsWindow:
         self.page_title(
             page,
             "Overview",
-            "BaseMark stamps the material and a part ID into the bottom of every PrusaSlicer "
-            "export, so even a failed print can be identified and recycled correctly.",
+            "BaseMark stamps the material (and, if you like, a part number) into the bottom of "
+            "every PrusaSlicer export, so even a failed print can be recycled correctly.",
         )
         frame, self.status_card = ui.card(page, fill="x")
         top = ttk.Frame(self.status_card, style="Card.TFrame")
@@ -276,27 +298,30 @@ class SettingsWindow:
         row.columnconfigure((0, 1), weight=1, uniform="cards")
         left_frame, left = ui.card(row)
         left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, ui.px(7)))
-        ttk.Label(left, text="THIS COMPUTER", style="Card.Eyebrow.TLabel").pack(anchor="w")
-        prefix_row = ttk.Frame(left, style="Card.TFrame")
-        prefix_row.pack(fill="x", pady=(ui.px(8), ui.px(4)))
-        ttk.Label(prefix_row, text="Prefix", style="Value.TLabel").pack(side="left")
-        self.entry(prefix_row, "counter_prefix", width=6).pack(side="left", padx=ui.px(10))
-        self.prefix_hint = ttk.Label(
-            left, text="", style="Card.Small.TLabel", wraplength=ui.px(270)
+        ttk.Label(left, text="LABEL", style="Card.Eyebrow.TLabel").pack(anchor="w")
+        self.preview = ttk.Label(left, text="", style="Big.TLabel")
+        self.preview.pack(anchor="w", pady=(ui.px(6), 0))
+        ttk.Label(
+            left,
+            text="Example for PLA; the material comes from the filament in PrusaSlicer.",
+            style="Card.Small.TLabel",
+            wraplength=ui.px(270),
+        ).pack(anchor="w")
+        number_row = ttk.Frame(left, style="Card.TFrame")
+        number_row.pack(fill="x", pady=(ui.px(14), 0))
+        ui.Switch(number_row, self.numbered, command=self.toggle_numbered).pack(side="left")
+        ttk.Label(number_row, text="Add a part number", style="Card.TLabel").pack(
+            side="left", padx=ui.px(10)
         )
-        self.prefix_hint.pack(anchor="w")
-        ttk.Label(left, text="Next part ID", style="Card.Muted.TLabel").pack(
-            anchor="w", pady=(ui.px(12), 0)
-        )
-        self.next_id = ttk.Label(left, text="", style="Big.TLabel")
-        self.next_id.pack(anchor="w")
+        self.next_id = ttk.Label(left, text="", style="Card.Small.TLabel", wraplength=ui.px(270))
+        self.next_id.pack(anchor="w", pady=(ui.px(6), 0))
 
         right_frame, right = ui.card(row)
         right_frame.grid(row=0, column=1, sticky="nsew", padx=(ui.px(7), 0))
         ttk.Label(right, text="STAMPING", style="Card.Eyebrow.TLabel").pack(anchor="w")
         switch_row = ttk.Frame(right, style="Card.TFrame")
         switch_row.pack(fill="x", pady=(ui.px(8), ui.px(12)))
-        ui.Switch(switch_row, self.values["enabled"], command=self.save).pack(side="left")
+        ui.Switch(switch_row, self.values["enabled"]).pack(side="left")
         self.enabled_text = ttk.Label(switch_row, text="", style="Value.TLabel")
         self.enabled_text.pack(side="left", padx=ui.px(10))
         ttk.Label(right, text="On each export", style="Card.Muted.TLabel").pack(anchor="w")
@@ -304,14 +329,10 @@ class SettingsWindow:
             right,
             self.values["mode"],
             [("interactive", "Let me place it"), ("auto", "Place automatically")],
-            command=self.save,
         ).pack(anchor="w", pady=(ui.px(4), ui.px(12)))
-        ttk.Label(right, text="Label preview", style="Card.Muted.TLabel").pack(anchor="w")
-        self.preview = ttk.Label(right, text="", style="Value.TLabel", font=(ui.SEMIBOLD, 13))
-        self.preview.pack(anchor="w")
         notice_row = ttk.Frame(right, style="Card.TFrame")
-        notice_row.pack(fill="x", pady=(ui.px(12), 0))
-        ui.Switch(notice_row, self.values["notify"], command=self.save).pack(side="left")
+        notice_row.pack(fill="x")
+        ui.Switch(notice_row, self.values["notify"]).pack(side="left")
         ttk.Label(
             notice_row,
             text="Show a notice after each export",
@@ -330,20 +351,13 @@ class SettingsWindow:
         self.history = ttk.Frame(recent, style="Card.TFrame")
         self.history.pack(fill="x")
 
-    def refresh_overview(self):
+    def refresh_label(self):
         prefix = self.values["counter_prefix"].get().strip()
         digits = self.values["counter_digits"].get()
         try:
             next_id = prefix + str(int(self.values["counter_next"].get())).zfill(int(digits))
         except ValueError:
             next_id = "—"
-        self.next_id.configure(text=next_id)
-        self.prefix_hint.configure(
-            text="Set a prefix: give every PC its own letter (A, B, …) so IDs never clash."
-            if not prefix
-            else "Unique to this PC. Labels and the log use it.",
-            foreground=ui.WARN if not prefix else ui.MUTED,
-        )
         try:
             preview = (
                 self.values["template"]
@@ -354,15 +368,33 @@ class SettingsWindow:
                     prefix=prefix,
                     date=datetime.now().date().isoformat(),
                 )
+                .strip()
             )
         except (KeyError, IndexError, ValueError):
-            preview = "Template needs {material} and {id}"
-        self.preview.configure(text=preview)
+            preview = "Label text needs {material}"
+        self.preview.configure(text=preview or "—")
+        self.next_id.configure(
+            text=f"Next number {next_id}. Look parts up under Find part."
+            if self.numbered.get()
+            else "Off: the label shows only the material and no number is used."
+        )
         self.enabled_text.configure(
             text="On — exports get a label"
             if self.values["enabled"].get()
             else "Off — exports unchanged"
         )
+
+    def toggle_numbered(self):
+        template = self.values["template"].get().strip()
+        if self.numbered.get():
+            if "{id}" not in template:
+                template = NUMBERED if template == MATERIAL_ONLY else f"{template} {{id}}"
+        else:
+            template = " ".join(template.replace("{id}", " ").split()) or MATERIAL_ONLY
+        self.values["template"].set(template)
+
+    def refresh_overview(self):
+        self.refresh_label()
         for child in (*self.last_export.winfo_children(), *self.history.winfo_children()):
             child.destroy()
         report = read_last_export(self.path)
@@ -485,19 +517,28 @@ class SettingsWindow:
             page,
             "Stamp",
             "How the label looks and how deep it goes. Filament Notes in PrusaSlicer can "
-            "override these per material, e.g. basemark: layers=2; size=6.",
+            "override these per material, e.g. basemark: layers=2; size=4.",
         )
         _, body = ui.card(page, fill="x")
         self.setting_row(
             body,
+            "Part number",
+            "Adds a running number after the material (PLA 001), so each part can be looked "
+            "up under Find part. Off: only the material, and no number is used.",
+            lambda parent: ui.Switch(parent, self.numbered, command=self.toggle_numbered),
+        )
+        self.setting_row(
+            body,
             "Text height",
-            "Cap height of the letters, 4–12 mm. Larger text reads better.",
+            "Cap height of the letters, 2–12 mm. 3 mm is the smallest that prints cleanly "
+            "with a 0.4 mm nozzle; larger text reads more easily but needs a bigger part.",
             self.unit_entry("text_height_mm", "mm"),
         )
         self.setting_row(
             body,
             "Smallest text",
-            "Automatic placement may shrink the text down to this size to fit.",
+            "Automatic placement may shrink the text to this size to fit a small part. "
+            "Below 3 mm, print a test part first.",
             self.unit_entry("min_text_height_mm", "mm"),
         )
         self.setting_row(
@@ -508,19 +549,19 @@ class SettingsWindow:
                 parent,
                 self.values["layers"],
                 [("1", "1 layer"), ("2", "2 layers"), ("3", "3 layers")],
-                command=self.save,
             ),
         )
         self.setting_row(
             body,
             "Edge margin",
-            "Minimum distance from the part's edges and holes.",
+            "Minimum distance from the part's edges and holes. 1.5 mm keeps the outer "
+            "walls intact.",
             self.unit_entry("margin_mm", "mm"),
         )
         self.setting_row(
             body,
-            "Label text",
-            "Use {material} and {id}; {date} and {prefix} are optional.",
+            "Custom label",
+            "{material} is required; {id} adds the part number and {date} the export date.",
             lambda parent: self.entry(parent, "template", width=22),
             last=True,
         )
@@ -544,7 +585,7 @@ class SettingsWindow:
         )
         ttk.Label(
             page,
-            text="Type it exactly, including the prefix and zeros, e.g. A001.",
+            text="Type the part number exactly as printed, including zeros, e.g. 001.",
             style="Small.TLabel",
         ).pack(anchor="w", pady=(ui.px(6), ui.px(14)))
         self.results = ttk.Frame(page)
@@ -569,8 +610,8 @@ class SettingsWindow:
             )
             ttk.Label(
                 body,
-                text="Check the prefix and leading zeros. Parts exported on another PC are in "
-                "that PC's log.",
+                text="Check the leading zeros. Only parts exported with a part number are "
+                "listed, and only from this PC.",
                 style="Card.Muted.TLabel",
             ).pack(anchor="w")
             return
@@ -759,13 +800,55 @@ class SettingsWindow:
             data[key] = value
         return Settings(**data).validate()
 
-    def save(self):
-        """Validate and save every field; called automatically after each change."""
+    def form(self) -> dict:
+        return {key: variable.get() for key, variable in self.values.items()}
+
+    def dirty(self) -> bool:
+        def norm(values):
+            return {key: str(value).strip() for key, value in values.items()}
+
+        return norm(self.form()) != norm(self.snapshot)
+
+    def changed(self):
+        """Any field changed: sync the part-number switch, preview and Save button."""
+        try:
+            numbered = "id" in template_fields(self.values["template"].get())
+            if numbered != self.numbered.get():
+                self.numbered.set(numbered)
+        except ValueError:
+            pass
+        dirty = self.dirty()
+        for button in (self.save_button, self.discard_button):
+            button.configure(state="normal" if dirty else "disabled")
+        if dirty:
+            self.say("Unsaved changes. Click Save changes (Ctrl+S) to use them.", "warn")
+        elif str(self.feedback.cget("text")).startswith("Unsaved"):
+            self.say("")
+        self.refresh_label()
+
+    def discard(self):
+        for key, value in self.snapshot.items():
+            self.values[key].set(value)
+        self.say("Changes discarded.")
+
+    def close(self):
+        if self.dirty():
+            answer = messagebox.askyesnocancel(
+                "Save changes?",
+                "Some settings were changed but not saved. Save them before closing?",
+                parent=self.root,
+            )
+            if answer is None or (answer and not self.save()):
+                return  # cancelled, or the changes are invalid: keep the window open
+        self.root.destroy()
+
+    def save(self) -> bool:
+        """Validate and save every field. Returns False (and says why) if not saved."""
+        if not self.dirty():
+            self.say("Everything is saved.")
+            return True
         try:
             settings = self.collect()
-            if settings == self.settings and settings.counter_next == self.saved_next:
-                self.refresh_overview()
-                return
             counter_path, _ = settings.paths(self.path.parent)
             validate_paths(self.path, settings)
             with Counter(counter_path) as counter:
@@ -777,12 +860,17 @@ class SettingsWindow:
                 counter.reset(settings.counter_next)
                 self.saved_next = counter.next
             self.settings = settings
-            self.say("Saved. Applies to your next export.", "ok")
         except json.JSONDecodeError:
             self.say('Material aliases must be JSON, e.g. {"PET": "PETG"}. Not saved.', "bad")
+            return False
         except Exception as exc:
             self.say(f"Not saved: {exc}", "bad")
+            return False
+        self.snapshot = self.form()
+        self.changed()
+        self.say("Saved. Applies to your next export.", "ok")
         self.refresh_overview()
+        return True
 
 
 def open_settings(path: Path):

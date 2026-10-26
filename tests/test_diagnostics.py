@@ -5,6 +5,7 @@ import json
 import pytest
 
 from basemark.__main__ import main
+from basemark.config import NUMBERED
 from basemark.counter import LOG_FIELDS, Counter
 from basemark.diagnostics import read_report
 from basemark.errors import SafeSkip
@@ -59,7 +60,8 @@ def test_check_never_recovers_pending_transaction(job_file, tmp_path):
     final.write_bytes(b"after")
     state = pending(tmp_path, final)
     original, journal = job_file.read_bytes(), state.read_bytes()
-    assert main(["--config", str(tmp_path / "config.toml"), "--check", str(job_file)]) == 2
+    args = ["--config", str(tmp_path / "config.toml"), "--template", NUMBERED]
+    assert main([*args, "--check", str(job_file)]) == 2
     assert job_file.read_bytes() == original
     assert state.read_bytes() == journal
     assert not (tmp_path / "log.csv").exists()
@@ -84,7 +86,8 @@ def test_last_export_report_success_and_skip(job_file, tmp_path):
     assert main(args) == 0
     report = json.loads((tmp_path / "last-export.json").read_text())
     assert report["status"] == "stamped"
-    assert report["part_id"] == "001"
+    assert report["part_id"] == ""  # material only by default: no number used
+    assert not (tmp_path / "counter.json").exists()
     assert "Stamped" in read_report(config)
     stamped = job_file.read_bytes()
     assert main(args) == 0
@@ -101,7 +104,7 @@ def test_protected_paths_cannot_be_input_or_preview(job_file, tmp_path, name):
     protected.write_bytes(job_file.read_bytes())
     original = protected.read_bytes()
     with pytest.raises(SafeSkip, match="different paths"):
-        process(protected, tmp_path / "config.toml", {"mode": "auto"}, {})
+        process(protected, tmp_path / "config.toml", {"mode": "auto", "template": NUMBERED}, {})
     with pytest.raises(SafeSkip, match="different paths"):
         process(job_file, tmp_path / "config.toml", {}, {}, dry_run=True, preview=protected)
     assert protected.read_bytes() == original

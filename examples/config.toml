@@ -1,11 +1,11 @@
 enabled = true
 mode = "interactive"
-template = ">{material}< {id}"
-text_height_mm = 6.0
-min_text_height_mm = 4.0
+template = "{material} {id}"
+text_height_mm = 3.0
+min_text_height_mm = 3.0
 layers = 2
-margin_mm = 2.0
-counter_prefix = "A"
+margin_mm = 1.5
+counter_prefix = ""
 counter_digits = 3
 counter_next = 1
 counter_file = ""

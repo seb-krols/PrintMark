@@ -1,14 +1,15 @@
 # PrintMark / BaseMark
 
-**Material identity, printed in.** Automatic material and part-ID stamps for PrusaSlicer.
+**Material identity, printed in.** Automatic material stamps for PrusaSlicer.
 
 BaseMark removes small sections of extrusion from the bottom layers of a part to mark it
-with its selected filament and a running identifier, such as `>PETG< A042`. Even a failed
-print that retains its stamped base can carry its material identity into the recycling stream.
+with its selected filament, such as `PETG`, optionally followed by a running part number
+(`PETG 042`). Even a failed print that retains its stamped base can carry its material
+identity into the recycling stream.
 
 Built at the UBC IGEN 3D Print Shop by Sebastians Krols.
 
-**Status: v0.5 lab pilot.** PrintMark is the repository; BaseMark is the application name.
+**Status: v0.6 lab pilot.** PrintMark is the repository; BaseMark is the application name.
 Software verification is separate from physical qualification: check every printer, profile
 and sheet with real coupons before routine use. This is not yet a production-qualified tool.
 
@@ -21,26 +22,26 @@ and sheet with real coupons before routine use. This is not yet a production-qua
    `BaseMark … Windows pilot`.
 2. In PrusaSlicer, select the printer and print profile you normally use, then **close
    PrusaSlicer**.
-3. Download and run `basemark-0.5.0-windows-x64-setup.exe`. It has one page: type this PC's
-   **prefix** (`A`, `B`, …) and keep **Connect PrusaSlicer now** ticked, then click **Install**.
-   It installs per user to `%LOCALAPPDATA%\Programs\BaseMark` (no administrator rights, no
-   Python), adds `… + BaseMark` copies of the selected presets and selects them. BaseMark
-   opens and should say **Ready to stamp**.
+3. Download and run `basemark-0.6.0-windows-x64-setup.exe`. Keep **Connect PrusaSlicer
+   now** ticked and click **Install**. It installs per user to
+   `%LOCALAPPDATA%\Programs\BaseMark` (no administrator rights, no Python), adds
+   `… + BaseMark` copies of the selected presets and selects them. BaseMark opens and should
+   say **Ready to stamp**.
 
-**Several shop PCs:** run the installer silently with that PC's prefix, e.g.
-`basemark-0.5.0-windows-x64-setup.exe /VERYSILENT /PREFIX=B` (PrusaSlicer closed). Add
-`/CONNECT=no` to leave PrusaSlicer alone. Upgrades keep the prefix, IDs and settings.
+Unattended install: `basemark-0.6.0-windows-x64-setup.exe /VERYSILENT` (PrusaSlicer closed;
+add `/CONNECT=no` to leave PrusaSlicer alone). Upgrades keep settings and history.
 
 The build is unsigned, so Windows SmartScreen may say *Windows protected your PC*: choose
 **More info → Run anyway** after checking the file came from this repository. To verify it:
-`Get-FileHash .\basemark-0.5.0-windows-x64-setup.exe` must match the `.sha256` file.
+`Get-FileHash .\basemark-0.6.0-windows-x64-setup.exe` must match the `.sha256` file.
 A portable ZIP is attached too; keep its `.exe` files and `_internal` folder together.
 
 ## First test with PrusaSlicer (about 10 minutes)
 
-1. **Check the prefix.** Open **BaseMark** from the Start menu. *This computer* on the
-   **Overview** shows the prefix from the installer; change it there if needed (it saves
-   automatically).
+1. **Check the label.** Open **BaseMark** from the Start menu. The **Overview** shows the
+   label, e.g. `PLA`. Switch on **Add a part number** for `PLA 001`, `PLA 002`, … so each part
+   can be looked up later. Settings take effect after **Save changes** (Ctrl+S); closing with
+   unsaved changes asks first.
 2. **Check PrusaSlicer.** The Overview must say **Ready to stamp**. If not (for example
    PrusaSlicer was open during install, or you want another print profile), select the
    profile in PrusaSlicer, **close PrusaSlicer** and click **Set up PrusaSlicer**. It adds
@@ -51,12 +52,13 @@ A portable ZIP is attached too; keep its `.exe` files and `_internal` folder tog
    **Export G-code**. The *Stamp this export* window opens during the export (not when
    slicing): drag the label if you like (**+/−** size, **R** rotate), then **Enter** to apply
    or **Esc** to skip.
-4. **Check the result.** A notice in the screen corner confirms *Stamped >PLA< A001*, or
+4. **Check the result.** A notice in the screen corner confirms *Stamped PLA*, or
    says why the export was left unchanged. The Overview lists it under *Recent exports*.
    Open the exported file in **PrusaSlicer G-code Viewer** (File → G-code preview): the first
    layers show mirrored text-shaped gaps, with a solid layer above. The normal slicer preview
    still shows the toolpaths from before BaseMark.
-5. **Find it again.** **Find part**, then enter the printed ID (e.g. `A001`).
+5. **Find it again** (with part numbers on): **Find part**, then enter the printed number
+   (e.g. `001`).
 6. **Print it** under normal supervision, then follow the [lab test plan](docs/lab-validation.md).
 
 **Nothing happened?** Slicing alone does not run BaseMark: it runs only when you click
@@ -66,7 +68,7 @@ A portable ZIP is attached too; keep its `.exe` files and `_internal` folder tog
 PrusaSlicer only count once the preset is saved, and opening a `.3mf` project can switch
 back to the presets stored in that project. If the result says *skipped*, the message names the
 cause: for example `G2 is unsupported` (arc fitting on) or `binary/packaged G-code`.
-Skipped exports are left unchanged and consume no ID. The [installation guide](INSTALL.md)
+Skipped exports are left unchanged and consume no number. The [installation guide](INSTALL.md)
 covers manual setup, troubleshooting, upgrades and removal. For scripted lab setup:
 `basemark.exe --setup-prusaslicer` / `--check-prusaslicer` (exit 2 = not ready).
 
@@ -86,25 +88,42 @@ Bambu printer profiles have not been tested yet. None of this replaces printing 
 
 PrusaSlicer waits for the placement window. Drag the stamp, use **+/−** to resize,
 **R** to rotate 90°, or choose **Auto place**. **Enter** applies; **Esc** or **Skip label**
-exports unchanged and consumes no ID. Both the footprint and text are shown **from below**.
+exports unchanged and consumes no number. Both the footprint and text are shown **from below**.
 The G-code itself contains mirrored text. A missing display falls back to auto placement.
 Automatic placement tries horizontal and 90° orientations at each size before shrinking,
 so tall, narrow parts can retain full-size lettering.
 
-## Find a part from its printed ID
+## Text size and small parts
 
-Open **BaseMark → Find part** and enter the complete ID, such as `A042`. The result shows the
-material, export time, filename, object names, computer and output hash from the saved CSV.
-Search is exact and case-sensitive; prefixes and leading zeros matter. It reads the local log,
-so use the originating PC or a copy of its CSV. It records an export, not proof of a finished print.
+The default text is **3 mm** tall (cap height). The stamp is a gap in the bottom-layer
+toolpaths, so its detail is limited by the extrusion line (about 0.45 mm on the first layer
+with a 0.4 mm nozzle). In the bundled Lato Bold the strokes are about 0.18 × the text
+height: at 3 mm they are about 0.55 mm and the letter openings about 1 mm, just enough to
+stay open. Below that, strokes become narrower than one line and fill in. Common FDM
+guidance agrees (about 16 pt bold ≈ 4 mm for top/bottom faces; 2 mm text fails, 3 mm is
+marginal for embossed text).
+
+Smallest part (default 1.5 mm edge margin): `PLA` at 3 mm is 7.3 × 3 mm, so the solid
+bottom must be at least about **10 × 6 mm**; `PETG` about 13 × 6 mm; `PLA 001` about
+18 × 6 mm. The placement window's **−** goes down to 2 mm by hand for an occasional small
+part. A 1 × 2 mm base cannot hold any legible letter: even a single 2 mm character
+needs about 2 × 2 mm plus a margin. Print a test part before relying on text below 3 mm.
+
+## Find a part from its printed number
+
+With **Add a part number** on, each export gets the next number and a record in the local
+CSV log. Open **BaseMark → Find part** and enter the number, such as `042`. The result shows
+the material, export time, filename, object names, computer and output hash. Search is exact;
+leading zeros matter. It records an export, not proof of a finished print. Material-only labels
+use no number and are not logged (the Overview still shows the last export).
 
 ```sh
-basemark --lookup A042
-basemark --lookup A042 --json
-basemark --log-file /path/to/copied-log.csv --lookup A042
+basemark --lookup 042
+basemark --lookup 042 --json
+basemark --log-file /path/to/copied-log.csv --lookup 042
 ```
 
-Lookup does not change files or consume an ID. Exit 0 means found; exit 1 means not found or
+Lookup does not change files or consume a number. Exit 0 means found; exit 1 means not found or
 the log could not be read (check stderr). Duplicate legacy records are all displayed explicitly.
 
 ![Looking up a printed part in the local audit history](docs/images/find-part.png)
@@ -127,7 +146,7 @@ Python Tk package if necessary. `uv` is optional: `python -m pip install -e '.[d
 basemark --mode auto --dry-run --preview-output preview.svg job.gcode
 
 # Stamp a copy for inspection
-basemark --mode auto --prefix A job-copy.gcode
+basemark --mode auto --template "{material} {id}" job-copy.gcode
 
 # Per-job opt-out (bypasses even an invalid config)
 basemark --off job.gcode
@@ -150,8 +169,9 @@ Config locations:
 - Linux/macOS: `~/.config/basemark/config.toml` (respects `XDG_CONFIG_HOME`)
 - Any OS: `--config /path/to/config.toml`
 
-The settings window writes the TOML file. A complete example is [examples/config.toml](examples/config.toml).
-Filament notes can contain `basemark: layers=2; size=6; label=PETG`. `label` is an explicit
+The settings window writes the TOML file (only values that differ from the defaults, so
+improved defaults reach existing installs). An example is [examples/config.toml](examples/config.toml).
+Filament notes can contain `basemark: layers=2; size=4; label=PETG`. `label` is an explicit
 operator override; use it only when it accurately describes the filament. Material aliases
 can also be configured with `material_map = { PET = "PETG" }`.
 
@@ -161,12 +181,12 @@ can also be configured with `material_map = { PET = "PETG" }`.
 | --- | --- | --- |
 | `enabled` | `true` | Master switch |
 | `mode` | `"interactive"` | Placement popup or `"auto"` |
-| `template` | `">{material}< {id}"` | Requires material and ID; also supports date and prefix |
-| `text_height_mm` | `6.0` | Font cap height, 4–12 mm |
-| `min_text_height_mm` | `4.0` | Minimum auto-shrink size |
+| `template` | `"{material}"` | Label text; `"{material} {id}"` adds the part number; `{date}` also works |
+| `text_height_mm` | `3.0` | Font cap height, 2–12 mm |
+| `min_text_height_mm` | `3.0` | Minimum auto-shrink size |
 | `layers` | `2` | Recess depth, 1–3 layers |
-| `margin_mm` | `2.0` | Distance from first-layer edges/holes; at least 0.5 mm |
-| `counter_prefix` | `""` | Unique computer identifier |
+| `margin_mm` | `1.5` | Distance from first-layer edges/holes; at least 0.5 mm |
+| `counter_prefix` | `""` | Optional text before every number (several PCs only) |
 | `counter_digits` | `3` | Minimum zero-padding; never truncates larger IDs |
 | `counter_next` | `1` | Starting value / lower bound; stored counter is authoritative |
 | `counter_file` | `""` | Defaults to `counter.json` next to config |
@@ -177,8 +197,8 @@ can also be configured with `material_map = { PET = "PETG" }`.
 
 Relative counter/log paths resolve beside the config file. Use **local disks** for this pilot;
 network shares and cross-machine coordination are outside this release. The counter cannot
-be moved backwards through settings. For a new numbering series, choose a new prefix and
-counter file. `{id}` includes the prefix; `{prefix}{id}` will deliberately repeat it.
+be moved backwards through settings. For a new numbering series, start a new counter file.
+If several PCs ever stamp numbers, give each a `counter_prefix` (e.g. `"B"`) so numbers differ.
 
 The CSV records ID, UTC time, material, final export name when available, object comments,
 hostname, layer count, text height, removed filament length and output SHA-256. A journal
@@ -221,7 +241,7 @@ surfaces, strength and bridge quality need physical testing. The claim “must n
 print” is a design goal, not a guarantee that software testing can establish.
 
 PrusaSlicer's preview remains pre-processing; reopen the output in G-code Viewer.
-The symbol style `>PLA<` / `>PETG<` is not a claim of ISO certification or material verification.
+The label is not a claim of ISO certification or material verification.
 The label is only as accurate as the selected filament/profile.
 
 ## Project and release

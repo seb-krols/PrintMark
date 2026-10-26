@@ -43,11 +43,6 @@ def parser():
         help="create and select '+ BaseMark' copies of the selected PrusaSlicer presets "
         "(exit 3 while PrusaSlicer is open)",
     )
-    action.add_argument(
-        "--set-prefix",
-        metavar="PREFIX",
-        help="save this computer's ID prefix and keep all other settings (used by the installer)",
-    )
     p.add_argument("--off", dest="enabled", action="store_false", default=None)
     p.add_argument("--on", dest="enabled", action="store_true")
     p.add_argument("--mode", choices=["auto", "interactive"])
@@ -98,7 +93,6 @@ def main(argv=None) -> int:
         args.demo,
         args.check_prusaslicer,
         args.setup_prusaslicer,
-        args.set_prefix is not None,
     )
     if args.gcode and any(standalone):
         cli.error("this action does not accept a G-code argument")
@@ -124,7 +118,12 @@ def main(argv=None) -> int:
             from .notify import announce
 
             record_export(args.config, args.gcode, outcome, overrides, dict(os.environ))
-            announce(args.config, outcome, overrides, args.gcode)
+            announce(
+                args.config,
+                outcome,
+                overrides,
+                os.environ.get("SLIC3R_PP_OUTPUT_NAME") or args.gcode,
+            )
 
     try:
         if args.lookup is not None:
@@ -135,16 +134,6 @@ def main(argv=None) -> int:
             rows = lookup_id(log, args.lookup)
             print(json.dumps(rows, indent=2) if args.json else format_records(rows))
             return 0 if rows else 1
-        if args.set_prefix is not None:
-            from dataclasses import replace
-
-            from .config import save_settings
-
-            settings = replace(load_settings(args.config), counter_prefix=args.set_prefix.strip())
-            validate_paths(args.config, settings)
-            save_settings(args.config, settings)
-            print(f"BaseMark: this computer's prefix is now “{settings.counter_prefix}”.")
-            return 0
         if args.check_prusaslicer or args.setup_prusaslicer:
             from .prusaslicer import (
                 SetupError,
@@ -188,7 +177,7 @@ def main(argv=None) -> int:
             from .service import demo_data
 
             footprint, surface, placed, settings = demo_data()
-            choose_placement(footprint, surface, placed, settings, "PETG", "A042", demo=True)
+            choose_placement(footprint, surface, placed, settings, "PETG", "", demo=True)
             return 0
         if args.settings or args.gcode is None:
             from .settings_ui import open_settings

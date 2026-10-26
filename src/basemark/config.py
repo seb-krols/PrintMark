@@ -21,15 +21,42 @@ def config_dir() -> Path:
     return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "basemark"
 
 
+MATERIAL_ONLY = "{material}"
+NUMBERED = "{material} {id}"
+# Saved files without config_version (up to 0.5.0) listed every value, defaults included.
+# Values equal to those old defaults are dropped on load so the current defaults apply.
+CONFIG_VERSION = 2
+OLD_DEFAULTS = {
+    "template": ">{material}< {id}",
+    "text_height_mm": 6.0,
+    "min_text_height_mm": 4.0,
+    "margin_mm": 2.0,
+}
+
+
+def template_fields(template: str) -> set[str]:
+    """Placeholders used by a label template; raises ValueError for unsupported ones."""
+    found = set()
+    for _, key, spec, conv in string.Formatter().parse(template):
+        if key is not None and (key not in {"material", "id", "date", "prefix"} or spec or conv):
+            raise ValueError("only {material}, {id}, {date}, {prefix} are supported")
+        if key is not None:
+            found.add(key)
+    return found
+
+
 @dataclass(frozen=True)
 class Settings:
     enabled: bool = True
     mode: str = "interactive"
-    template: str = ">{material}< {id}"
-    text_height_mm: float = 6.0
-    min_text_height_mm: float = 4.0
+    template: str = MATERIAL_ONLY
+    # Lato Bold strokes are ~0.18 x cap height: 3 mm gives ~0.55 mm strokes, just over
+    # one 0.45 mm first-layer line, and ~1 mm counters. Smaller text starts to fill in.
+    text_height_mm: float = 3.0
+    min_text_height_mm: float = 3.0
     layers: int = 2
-    margin_mm: float = 2.0
+    # Keeps the label clear of the two outer perimeters (~0.9 mm).
+    margin_mm: float = 1.5
     counter_prefix: str = ""
     counter_digits: int = 3
     counter_next: int = 1
@@ -53,8 +80,8 @@ class Settings:
             if type(value) is not int or not low <= value <= high:
                 raise SafeSkip(f"{name} must be an integer from {low} to {high}")
         for name, low, high in [
-            ("text_height_mm", 4, 12),
-            ("min_text_height_mm", 4, 12),
+            ("text_height_mm", 2, 12),
+            ("min_text_height_mm", 2, 12),
             ("margin_mm", 0.5, 20),
         ]:
             value = getattr(self, name)
@@ -78,19 +105,17 @@ class Settings:
         ):
             raise SafeSkip("material_map must map text keys to text values")
         try:
-            placeholders = set()
-            for _, key, spec, conv in string.Formatter().parse(self.template):
-                if key is not None:
-                    placeholders.add(key)
-                if key is not None and (
-                    key not in {"material", "id", "date", "prefix"} or spec or conv
-                ):
-                    raise ValueError("only {material}, {id}, {date}, {prefix} are supported")
+            placeholders = template_fields(self.template)
         except ValueError as exc:
             raise SafeSkip(f"invalid template: {exc}") from exc
-        if not {"material", "id"} <= placeholders:
-            raise SafeSkip("template must include {material} and {id}")
+        if "material" not in placeholders:
+            raise SafeSkip("template must include {material}")
         return self
+
+    @property
+    def numbered(self) -> bool:
+        """Whether labels carry a part number (and exports use up IDs)."""
+        return "id" in template_fields(self.template)
 
     def paths(self, directory: Path) -> tuple[Path, Path]:
         def resolve(value: str, fallback: str) -> Path:
@@ -159,6 +184,8 @@ def load_settings(path: Path, notes: str = "", overrides: dict | None = None) ->
             data = tomllib.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
             raise SafeSkip(f"cannot read config {path}: {exc}") from exc
+    if data.pop("config_version", 1) < CONFIG_VERSION:
+        data = {k: v for k, v in data.items() if OLD_DEFAULTS.get(k, object()) != v}
     unknown = data.keys() - {f.name for f in fields(Settings)}
     if unknown:
         raise SafeSkip(f"unknown config keys: {', '.join(sorted(unknown))}")
@@ -190,7 +217,11 @@ def atomic_write(path: Path, data: bytes, *, mode: int | None = None) -> None:
 
 
 def save_settings(path: Path, settings: Settings) -> None:
-    atomic_write(path, tomli_w.dumps(asdict(settings.validate())).encode("utf-8"))
+    """Store only what differs from the defaults, so improved defaults reach old installs."""
+    defaults = asdict(Settings())
+    changed = {k: v for k, v in asdict(settings.validate()).items() if defaults[k] != v}
+    data = {"config_version": CONFIG_VERSION, **changed}
+    atomic_write(path, tomli_w.dumps(data).encode("utf-8"))
 
 
 def validate_paths(config: Path, settings: Settings, *extra: Path | None) -> None:

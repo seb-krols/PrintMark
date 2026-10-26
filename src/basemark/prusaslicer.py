@@ -279,14 +279,7 @@ def check(settings: Settings, command: str, data: Path | None = None) -> list[Fi
             Finding(None, f"{where} has several tools; BaseMark skips multi-tool jobs.")
         )
     if not settings.enabled:
-        findings.append(Finding(False, "BaseMark stamping is switched off (Stamp tab)."))
-    if not settings.counter_prefix:
-        findings.append(
-            Finding(
-                None,
-                "No computer prefix is set, so IDs look like 001. Set one so PCs never share IDs.",
-            )
-        )
+        findings.append(Finding(False, "BaseMark stamping is switched off (Overview)."))
     return findings
 
 
