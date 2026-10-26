@@ -123,12 +123,13 @@ begin
   Example.Parent := SetupPage.Surface;
   Example.Top := PrefixEdit.Top + ScaleY(3);
   Example.Left := PrefixEdit.Left + PrefixEdit.Width + ScaleX(10);
-  Example.Caption := 'e.g. A  ->  labels like >PLA< A042';
+  Example.Caption := 'e.g. A gives labels like >PLA< A042';
 
   ConnectBox := TNewCheckBox.Create(SetupPage);
   ConnectBox.Parent := SetupPage.Surface;
   ConnectBox.Top := PrefixEdit.Top + PrefixEdit.Height + ScaleY(26);
   ConnectBox.Width := SetupPage.SurfaceWidth;
+  ConnectBox.Height := ScaleY(22);
   ConnectBox.Caption := 'Connect PrusaSlicer now (recommended)';
   ConnectBox.Checked := CompareText(ExpandConstant('{param:CONNECT|yes}'), 'no') <> 0;
 
@@ -141,6 +142,13 @@ begin
   Hint.Caption := 'Adds "+ BaseMark" copies of the print and printer presets selected in ' +
     'PrusaSlicer (stamp on export, arc fitting off, plain G-code) and selects them. ' +
     'Your own presets are not changed. PrusaSlicer needs to be closed for this step.';
+end;
+
+{ The Ready page is disabled, so this page starts the install. }
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = SetupPage.ID then
+    WizardForm.NextButton.Caption := SetupMessage(msgButtonInstall);
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
