@@ -34,8 +34,13 @@ def main(platform: str):
         source = ROOT / "tests/fixtures/prusaslicer-2.8.1-petg-relative.gcode"
         target = temp / "coupon.gcode"
         shutil.copyfile(source, target)
+        # Part numbers on: exercises the counter, audit log and lookup too.
         result = subprocess.run(
-            [str(binary), "--config", str(temp / "config.toml"), "--mode", "auto", str(target)],
+            [
+                str(binary),
+                *("--config", str(temp / "config.toml"), "--mode", "auto"),
+                *("--template", "{material} {id}", str(target)),
+            ],
             check=True,
             timeout=30,
             capture_output=True,

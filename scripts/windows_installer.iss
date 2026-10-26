@@ -75,11 +75,11 @@ begin
   Hint.Left := ScaleX(18);
   Hint.Width := SetupPage.SurfaceWidth - ScaleX(18);
   Hint.WordWrap := True;
+  { No line may start with "#": the preprocessor would read it as a directive. }
   Hint.Caption := 'Adds "+ BaseMark" copies of the print and printer presets selected in ' +
     'PrusaSlicer (stamp on export, arc fitting off, plain G-code) and selects them. ' +
-    'Your own presets are not changed. PrusaSlicer needs to be closed for this step.' +
-    #13#10#13#10 + 'Labels show the material, e.g. PLA. A part number can be switched on ' +
-    'later in BaseMark.';
+    'Your own presets are not changed. PrusaSlicer needs to be closed for this step.' + #13#10#13#10 +
+    'Labels show the material, e.g. PLA. A part number can be switched on later in BaseMark.';
 end;
 
 { The Ready page is disabled, so this page starts the install. }
