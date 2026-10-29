@@ -98,6 +98,7 @@ class Move:
     comment: str
     command: str
     wipe: bool = False
+    obj: str = ""  # labelled object (instance) being printed; "" if the file has no labels
 
     @property
     def length(self) -> float:
@@ -132,6 +133,8 @@ def parse(text: str, default_width: float = 0.45, *, retain_layers: int | None =
     layer, feature, width, wipe = -1, "", default_width, False
     z_hint, last_z_hint = None, -math.inf
     moves, objects = [], []
+    # Object labels: "; printing object …" comments (OctoPrint style) or M486 (firmware).
+    current, labels, label_id = "", {}, None
     for index, line in enumerate(lines):
         plain = PLAIN_G1.match(line)
         if plain:
@@ -170,6 +173,9 @@ def parse(text: str, default_width: float = 0.45, *, retain_layers: int | None =
                 name = stripped.removeprefix("; printing object ")
                 if name not in objects:
                     objects.append(name)
+                current = name
+            elif stripped.startswith("; stop printing object "):
+                current = ""
             code, sep, comment = line.partition(";")
             code = code.strip()
             if not code:
@@ -187,6 +193,8 @@ def parse(text: str, default_width: float = 0.45, *, retain_layers: int | None =
                 name = rest.lstrip()[1:].strip()
                 if name and name not in objects:
                     objects.append(name)
+                if name and label_id is not None:
+                    labels[label_id] = name
                 continue
             words = WORD.findall(rest)
             residue = WORD.sub("", rest).strip()
@@ -271,8 +279,13 @@ def parse(text: str, default_width: float = 0.45, *, retain_layers: int | None =
                     comment.rstrip("\r\n") if sep else "",
                     command,
                     wipe,
+                    current,
                 )
             )
+        elif command == "M486" and "S" in params:
+            # The header names each id (M486 S0, M486 A<name>); the print selects one.
+            label_id = int(params["S"])
+            current = "" if label_id < 0 else labels.get(label_id, f"Object {label_id + 1}")
         elif command in {"G28", "G29", "G80"}:
             if layer >= 0:
                 # End G-code homing is harmless once there are no further extrusions.

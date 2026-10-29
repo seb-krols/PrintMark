@@ -26,9 +26,11 @@ from .config import (
 )
 from .counter import Counter
 from .prusaslicer import SetupError, check, hook_command, setup
+from .watch import ensure_running
 
 INTEGER_FIELDS = {"layers", "counter_digits", "counter_next"}
 FLOAT_FIELDS = {"text_height_mm", "min_text_height_mm", "margin_mm"}
+BOOL_FIELDS = {"enabled", "notify", "every_part", "warn_unstamped"}
 WATCH_MS = 2000  # how often to look for exports made while the window is open
 PAGES = [
     ("overview", "Overview"),
@@ -67,7 +69,7 @@ class SettingsWindow:
         px = ui.px
 
         for key, value in asdict(self.settings).items():
-            if key in ("enabled", "notify"):
+            if key in BOOL_FIELDS:
                 self.values[key] = tk.BooleanVar(value=value)
             elif key == "material_map":
                 self.values[key] = tk.StringVar(value=json.dumps(value))
@@ -152,6 +154,7 @@ class SettingsWindow:
         self.show("overview")
         self.changed()
         root.after(150, self.refresh_status)
+        root.after(1000, lambda: ensure_running(path))
         self.seen = self.export_marks()
         root.after(WATCH_MS, self.watch_exports)
 
@@ -330,14 +333,21 @@ class SettingsWindow:
             self.values["mode"],
             [("interactive", "Let me place it"), ("auto", "Place automatically")],
         ).pack(anchor="w", pady=(ui.px(4), ui.px(12)))
-        notice_row = ttk.Frame(right, style="Card.TFrame")
-        notice_row.pack(fill="x")
-        ui.Switch(notice_row, self.values["notify"]).pack(side="left")
+        for key, text in [
+            ("notify", "Show a notice after each export"),
+            ("warn_unstamped", "Warn about exports without BaseMark"),
+        ]:
+            notice_row = ttk.Frame(right, style="Card.TFrame")
+            notice_row.pack(fill="x", pady=(0, ui.px(6)))
+            ui.Switch(notice_row, self.values[key]).pack(side="left")
+            ttk.Label(notice_row, text=text, style="Card.TLabel").pack(side="left", padx=ui.px(10))
         ttk.Label(
-            notice_row,
-            text="Show a notice after each export",
-            style="Card.TLabel",
-        ).pack(side="left", padx=ui.px(10))
+            right,
+            text="The warning appears when a new export comes from a print preset that "
+            "doesn't run BaseMark, or is binary G-code.",
+            style="Card.Small.TLabel",
+            wraplength=ui.px(270),
+        ).pack(anchor="w")
 
         frame, recent = ui.card(page, fill="x")
         head = ttk.Frame(recent, style="Card.TFrame")
@@ -526,6 +536,13 @@ class SettingsWindow:
             "Adds a running number after the material (PLA 001), so each part can be looked "
             "up under Find part. Off: only the material, and no number is used.",
             lambda parent: ui.Switch(parent, self.numbered, command=self.toggle_numbered),
+        )
+        self.setting_row(
+            body,
+            "Every part on the plate",
+            "Each part gets its own label; in the export window you can leave parts out. "
+            "Off: only the largest part is stamped.",
+            lambda parent: ui.Switch(parent, self.values["every_part"]),
         )
         self.setting_row(
             body,
@@ -868,6 +885,7 @@ class SettingsWindow:
             return False
         self.snapshot = self.form()
         self.changed()
+        ensure_running(self.path)  # the export warning was just switched on
         self.say("Saved. Applies to your next export.", "ok")
         self.refresh_overview()
         return True

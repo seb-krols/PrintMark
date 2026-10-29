@@ -57,7 +57,7 @@ def test_cancel_and_invalid_drag_preserve_input(job_file, tmp_path):
             tmp_path / "config.toml",
             {},
             {},
-            choose=lambda f, s, p, *args: replace(p, x=9999),
+            choose=lambda plate, placements, *args: [replace(p, x=9999) for p in placements],
         )
     assert job_file.read_bytes() == original
 

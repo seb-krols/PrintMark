@@ -1,4 +1,6 @@
 # Exercise the installed app and upgrade/uninstall without using the runner's real config.
+# It shares the real install's uninstall entry and startup shortcut: on a lab PC, run it
+# before (re)installing BaseMark itself.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $originalAppData = $env:APPDATA
@@ -11,9 +13,20 @@ try {
     $setup = (Get-ChildItem dist/basemark-*-windows-x64-setup.exe | Select-Object -Last 1).FullName
     # /CONNECT=no keeps the real PrusaSlicer untouched.
     $options = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$install`"", '/CONNECT=no')
-    $p = Start-Process $setup -ArgumentList $options -Wait -PassThru
+    # Not -Wait: that also waits for the export check the installer leaves running.
+    $p = Start-Process $setup -ArgumentList $options -PassThru; $p.WaitForExit()
     if ($p.ExitCode -ne 0) { throw "Installer failed: $($p.ExitCode)" }
     $binary = Join-Path $install 'basemark.exe'
+    # The installer starts the background export check and adds it to the user's startup.
+    function Get-Watcher {
+        Get-CimInstance Win32_Process -Filter "Name = 'basemark-desktop.exe'" |
+            Where-Object { $_.CommandLine -like '*--watch*' -and $_.ExecutablePath -like "$install*" }
+    }
+    $watcher = $null
+    for ($i = 0; $i -lt 40 -and !$watcher; $i++) { Start-Sleep -Milliseconds 250; $watcher = Get-Watcher }
+    if (!$watcher) { throw 'Background export check was not started' }
+    $startup = Join-Path ([Environment]::GetFolderPath('Startup')) 'BaseMark export check.lnk'
+    if (!(Test-Path $startup)) { throw 'Export check is not started at login' }
     # Part numbers on, so the counter and audit log are exercised too.
     $config = Join-Path $env:APPDATA 'BaseMark/config.toml'
     New-Item (Split-Path $config) -ItemType Directory -Force | Out-Null
@@ -47,10 +60,18 @@ try {
     # End the UI smoke process before testing an upgrade.
     taskkill /PID $desktop.Id /T /F | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not close settings process' }
-    $p = Start-Process $setup -ArgumentList $options -Wait -PassThru
+    $before = @(Get-Watcher).ProcessId
+    $p = Start-Process $setup -ArgumentList $options -PassThru; $p.WaitForExit()
     if ($p.ExitCode -ne 0) { throw 'Upgrade failed' }
-    $p = Start-Process (Join-Path $install 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+    Start-Sleep -Seconds 2
+    $after = @(Get-Watcher)
+    if ($after.Count -ne 1 -or $before -contains $after[0].ProcessId) {
+        throw 'Upgrade did not replace the export check with exactly one new copy'
+    }
+    $p = Start-Process (Join-Path $install 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -PassThru; $p.WaitForExit()
     if ($p.ExitCode -ne 0 -or (Test-Path $binary)) { throw 'Uninstall failed' }
+    if (Get-Watcher) { throw 'Export check still running after uninstall' }
+    if (Test-Path $startup) { throw 'Startup entry left after uninstall' }
     if ((Get-FileHash $state).Hash -ne $stateHash -or (Get-FileHash $log).Hash -ne $logHash -or (Get-FileHash $config).Hash -ne $configHash) {
         throw 'Upgrade/uninstall altered settings or audit history'
     }

@@ -1,5 +1,26 @@
 # Changes
 
+## 0.7.0 — every part on the plate, export warning
+
+- **Every part on the plate gets a label.** Parts are told apart by PrusaSlicer's
+  *Label objects* (on in Prusa's printer profiles; `; printing object` comments or `M486`
+  firmware labels), otherwise by separate first-layer islands. Parts without room are left
+  unstamped and the notice says *Stamped PLA on 2 of 3 parts*. With part numbers on, all
+  parts of one export carry the same number and the log lists every object. **Every part on
+  the plate** (Stamp page, `every_part = false`) goes back to the largest part only.
+- **The export window shows the whole plate**: click a part or press Tab to select it,
+  switch off **Stamp this part** to leave one out, **Zoom to this part** (Z or
+  double-click) for small parts. The green button says how many parts get a label.
+- **Warning for exports without BaseMark.** A small background check, started at login by
+  the installer, looks at new G-code files in PrusaSlicer's export folders, Downloads and
+  Desktop. A notice, *Exported without BaseMark*, names the print preset that doesn't run
+  BaseMark, or flags binary G-code. Turn it off on the Overview (*Warn about exports without
+  BaseMark*, `warn_unstamped = false`). The installer stops it before upgrades and on
+  uninstall. New `--watch` and `--stop-watcher`.
+- README rewritten for shop staff, with current screenshots; settings, command line and
+  supported G-code moved to [docs/reference.md](docs/reference.md).
+- Fixed: the export window's side panel no longer cuts off its last line on a plate.
+
 ## 0.6.0 — material-only labels, small text, Save button
 
 - **Labels show just the material** (`PLA`) by default. **Add a part number** (Overview or

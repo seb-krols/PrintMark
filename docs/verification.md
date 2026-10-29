@@ -3,6 +3,27 @@
 This document distinguishes software checks from tests on physical printers. It is not a
 certificate of print quality or blanket firmware compatibility.
 
+## v0.7.0 (Windows 11, 2026-10-28)
+
+- 189 automated tests, including new plate tests: synthetic plates with OctoPrint-style and
+  M486 object labels and without labels, a part too small for a label, an operator leaving
+  parts out, one number per numbered plate, and a real PrusaSlicer 2.7.4 three-part plate with
+  firmware labels (upper layers byte-identical). Background-check tests cover unhooked,
+  hooked, stamped, non-PrusaSlicer and binary files, the off switch, no duplicate notice, and
+  a single background process that stops on request. Two Tk tests skip now and then on this
+  PC because the development Python intermittently fails to read its Tcl files; each passed
+  in other runs. The frozen app bundles its own Tcl.
+- Install test: install, the background check started and listed in Startup, stamping,
+  settings window, upgrade (exactly one new background check replaces the old), uninstall
+  (check stopped, Startup entry removed), settings and history preserved.
+- Real PrusaSlicer 2.7.4 export of a three-part plate through the installed 0.7.0 with the
+  owner's own MK4IS `+ BaseMark` presets (hook given `--mode auto` and a scratch config):
+  *Stamped PLA · 3 parts · 2 layers · 3 mm · 96 moves*.
+- The installed background check, run with a sandboxed home folder, warned about a real
+  PrusaSlicer export made with the hook removed (*Exported without BaseMark*), and stopped on
+  `--stop-watcher`.
+- A 20-part plate (PrusaSlicer 2.7.4, regression profile) stamps in about 3 s.
+
 ## Executed during implementation
 
 Environment: Linux x86-64, Python 3.12.15; desktop interaction also exercised with Python

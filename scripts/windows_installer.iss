@@ -39,8 +39,11 @@ Source: "..\build\windows-payload\*"; DestDir: "{app}"; Flags: ignoreversion rec
 [Icons]
 Name: "{group}\BaseMark"; Filename: "{app}\basemark-desktop.exe"
 Name: "{group}\BaseMark Installation Guide"; Filename: "{app}\INSTALL.md"
+; Background check at login: warns about exports from presets without BaseMark.
+Name: "{userstartup}\BaseMark export check"; Filename: "{app}\basemark-desktop.exe"; Parameters: "--watch"
 
 [Run]
+Filename: "{app}\basemark-desktop.exe"; Parameters: "--watch"; Flags: nowait
 Filename: "{app}\basemark-desktop.exe"; Description: "Open BaseMark"; Flags: nowait postinstall skipifsilent
 
 ; Deliberately no UninstallDelete for AppData: preserve IDs, settings and logs.
@@ -80,6 +83,27 @@ begin
     'PrusaSlicer (stamp on export, arc fitting off, plain G-code) and selects them. ' +
     'Your own presets are not changed. PrusaSlicer needs to be closed for this step.' + #13#10#13#10 +
     'Labels show the material, e.g. PLA. A part number can be switched on later in BaseMark.';
+end;
+
+{ The running export check holds the program files open: end it before replacing them. }
+procedure StopWatcher();
+var
+  Code: Integer;
+begin
+  if FileExists(App()) then
+    Exec(App(), '--stop-watcher', '', SW_HIDE, ewWaitUntilTerminated, Code);
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  StopWatcher();
+  Result := '';
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  StopWatcher();
+  Result := True;
 end;
 
 { The Ready page is disabled, so this page starts the install. }

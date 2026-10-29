@@ -19,15 +19,18 @@ While signed into the GitHub account with access to this private repository, ope
 [Windows installer build](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml)
 also has a `basemark-windows-x64` artifact with the same files.) The downloads are:
 
-- `basemark-0.6.0-windows-x64-setup.exe`: the recommended per-user installer.
-- `basemark-0.6.0-windows-x64.zip`: portable alternative; extract to a permanent local folder.
+- `basemark-<version>-windows-x64-setup.exe`: the recommended per-user installer.
+- `basemark-<version>-windows-x64.zip`: portable alternative; extract to a permanent local folder.
   Keep `basemark.exe`, `basemark-desktop.exe` and the `_internal` folder together.
 - SHA-256 files for verifying downloads with PowerShell `Get-FileHash`.
 
 Select your usual printer and print presets in PrusaSlicer and close it, then run the
 setup executable. Its single page offers **Connect PrusaSlicer now** (does the automatic
 setup below); click **Install**. It installs to `%LOCALAPPDATA%\Programs\BaseMark` without
-administrator rights and adds **BaseMark** to the Start menu. Unattended:
+administrator rights, adds **BaseMark** to the Start menu and starts the background export
+check (also at login; see [reference](docs/reference.md#the-background-export-check)), which
+warns about exports from presets without BaseMark. The portable ZIP has no such check unless
+you start `basemark-desktop.exe --watch` yourself. Unattended:
 `setup.exe /VERYSILENT` (`/CONNECT=no` skips PrusaSlicer). The installer never changes an
 already working PrusaSlicer setup. Builds are currently
 unsigned; SmartScreen may say *Windows protected your PC*: choose **More info → Run anyway**
@@ -103,7 +106,10 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
 - **Find a part** (part numbers on): open **Find part** and enter the printed number (`042`).
   It searches the CSV selected in saved settings and shows the original export's details.
   An unknown ID may belong to another PC; each computer keeps its own local history.
-- **Skip one job:** choose **Skip label** in the popup. For automatic mode, temporarily
+- **Plates:** every part gets a label. In the export window click a part (or press Tab) and
+  switch off **Stamp this part** to leave it out. **Stamp → Every part on the plate** off
+  labels only the largest part.
+- **Skip one job:** choose **Skip label** / **Skip all** in the popup. For automatic mode, temporarily
   append `--off` to the hook. Remove that option afterward.
 - **Settings and records:** `%APPDATA%\BaseMark\` contains `config.toml`, `counter.json`,
   `log.csv` and `last-export.json`. Back up this folder with the shop's records.
@@ -118,6 +124,7 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
 
 | Symptom | Action |
 | --- | --- |
+| Warning *Exported without BaseMark* | The print preset used has no BaseMark hook (or the export was binary G-code). Select the `… + BaseMark` preset, or close PrusaSlicer and use **Set up PrusaSlicer**. The warning can be switched off on the Overview. |
 | No popup or marking | Click **Check again** on BaseMark's Overview. Usually the print preset with the hook was never saved, a different preset or `.3mf` project preset is active, or the job was only sliced, not exported. If Recent exports shows *skipped*, the reason is listed; a safe skip leaves the export unchanged. |
 | File cannot fit a stamp | Use a larger footprint, adjust size/margin within limits, or skip this part. Holes and sparse bottoms reduce the usable area. |
 | Unsupported command/profile | Run `--dump-env` through the hook once, preserve a small original export and report the skip reason. Restore the normal hook afterward. |

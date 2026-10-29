@@ -7,7 +7,7 @@ from html import escape
 from .footprint import polygons
 
 
-def svg_preview(footprint, surface, placement) -> str:
+def svg_preview(footprint, surface, placements) -> str:
     left, bottom, right, top = footprint.bounds
     width, height = right - left, top - bottom
     pad = max(width, height) * 0.06 + 2
@@ -25,10 +25,10 @@ def svg_preview(footprint, surface, placement) -> str:
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="760"
  viewBox="{-right - pad} {-top - pad} {width + 2 * pad} {height + 2 * pad}">
-<title>BaseMark — {escape(placement.text)} — seen from below</title>
+<title>BaseMark — {escape(placements[0].text)} — seen from below</title>
 <rect x="{-right - pad}" y="{-top - pad}" width="{width + 2 * pad}" height="{height + 2 * pad}"
  fill="#f5f3ee"/>
 {path(footprint, "#d9dfda", "#8d9a92")}
 {path(surface, "#eaf0e8", "none")}
-{path(placement.geometry, "#137d6b", "none")}
+{"".join(path(p.geometry, "#137d6b", "none") for p in placements)}
 </svg>'''

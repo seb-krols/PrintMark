@@ -13,18 +13,26 @@ def main(argv=None) -> int:
     parser.add_argument("--config", type=Path, default=config_dir() / "config.toml")
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--notify", nargs=3, help=argparse.SUPPRESS)
+    parser.add_argument("--watch", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--stop-watcher", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.notify:  # export notice started by the slicer hook (see notify.py)
         from .notify import main as notice
 
         return notice(["--notify", *args.notify, "--config", str(args.config)])
+    if args.watch or args.stop_watcher:  # background export check (see watch.py)
+        from .watch import run, stop
+
+        if args.watch:
+            return run(args.config)
+        return 0 if stop(args.config) else 1
     try:
         if args.demo:
             from .popup import choose_placement
             from .service import demo_data
 
-            footprint, surface, placed, settings = demo_data()
-            choose_placement(footprint, surface, placed, settings, "PETG", "A042", demo=True)
+            plate, placements, settings = demo_data()
+            choose_placement(plate, placements, settings, "PETG", "", demo=True)
         else:
             from .settings_ui import open_settings
 

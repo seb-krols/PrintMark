@@ -63,6 +63,43 @@ def coupon(*, absolute=False, relative_xyz=False, width=80, depth=35, layers=4, 
     return "\n".join(lines) + "\n"
 
 
+def plate(sizes=((30, 14), (30, 14), (30, 14)), *, labels="octoprint", layers=4, spacing=0.4):
+    """Synthetic plate of several rectangular parts in a row. Not printer-ready.
+
+    labels: "octoprint" comments, "firmware" M486 labels, or None (no object labels).
+    """
+    lines = ["; synthetic BaseMark test plate; DO NOT PRINT", "G21", "G90", "M83", "G92 E0"]
+    if labels == "firmware":
+        for n in range(len(sizes)):
+            lines += [f"M486 S{n}", f"M486 Apart{n + 1}.stl"]
+        lines.append("M486 S-1")
+    lines.append("G1 X0 Y0 Z0.2 F6000")
+    for layer in range(layers):
+        z = round(0.2 * (layer + 1), 4)
+        lines += [";LAYER_CHANGE", f";Z:{z}", ";HEIGHT:0.2", ";WIDTH:0.45"]
+        left = 10
+        for n, (width, depth) in enumerate(sizes):
+            name = f"part{n + 1}.stl id:{n} copy 0"
+            if labels == "octoprint":
+                lines.append(f"; printing object {name}")
+            elif labels == "firmware":
+                lines.append(f"M486 S{n}")
+            lines.append(";TYPE:Solid infill")
+            for row in range(round(depth / spacing) + 1):
+                y = 10 + row * spacing
+                start, end = (left, left + width) if row % 2 == 0 else (left + width, left)
+                extrusion = width * spacing * 0.2 / (math.pi * (1.75 / 2) ** 2)
+                lines.append(f"G1 X{start:.4f} Y{y:.4f} Z{z} F6000")
+                lines.append(f"G1 X{end:.4f} Y{y:.4f} E{extrusion:.6f} F1800")
+            if labels == "octoprint":
+                lines.append(f"; stop printing object {name}")
+            elif labels == "firmware":
+                lines.append("M486 S-1")
+            left += width + 10
+    lines += ["M84", "; filament_type = PLA", "; first_layer_extrusion_width = 0.45"]
+    return "\n".join(lines) + "\n"
+
+
 @pytest.fixture
 def gcode():
     return coupon()

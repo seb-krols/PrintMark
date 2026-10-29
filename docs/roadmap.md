@@ -1,14 +1,18 @@
 # From lab pilot to a useful shared tool
 
-## Implemented in v0.3
+## Done so far
 
-- Find a part by printed ID in settings or the CLI, using the existing CSV history.
-- Try 90° placement before reducing text size on narrow parts.
-- Check logged IDs and CSV integrity before changing G-code; serialize the check and commit.
-- Protect hard-linked storage collisions and accept Windows UTF-8 BOM configuration files.
+- v0.3: find a part by its printed number; try 90° before shrinking; check the log before
+  changing G-code.
+- v0.4–0.5: one-page Windows installer that connects PrusaSlicer; the BaseMark app (Overview,
+  Stamp, Find part, Advanced); corner notices after each export; faster parsing.
+- v0.6: material-only labels by default (`PLA`), optional part numbers, 3 mm text, an explicit
+  Save button, no computer prefix.
+- v0.7: a label on every part of a plate; a background warning for exports made without
+  BaseMark; README for shop staff.
 
-The next priority is qualifying real Windows exports and physical coupons. Add per-object
-marking and arc support after those results establish which cases the shop actually needs.
+Next: physical test prints at 3 mm and 2.5 mm (PLA, PETG) to confirm the defaults, then arc
+fitting and binary G-code support, so stock Prusa presets work without `+ BaseMark` copies.
 
 ## Pilot
 
@@ -44,7 +48,8 @@ handling; a shared `counter.json` on a network drive is not an adequate substitu
 
 ## Technical follow-ups
 
-- Per-object labels and preview selection, including disconnected islands of one object.
+- Labels for parts that are disconnected on the first layer but belong to one object
+  (today: largest island per labelled object).
 - Arc linearization with bounded error and firmware-aware E behavior.
 - Qualified OrcaSlicer dialect support and Bambu transfer/packaging research.
 - Better bead-width compensation and slicer-generated roof bridging.

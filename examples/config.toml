@@ -1,6 +1,6 @@
 enabled = true
 mode = "interactive"
-template = "{material} {id}"
+template = "{material} {id}"  # part numbers on; "{material}" for the material only
 text_height_mm = 3.0
 min_text_height_mm = 3.0
 layers = 2
@@ -12,6 +12,8 @@ counter_file = ""
 log_file = ""
 label = ""
 notify = true
+warn_unstamped = true
+every_part = true
 
 [material_map]
 PET = "PETG"

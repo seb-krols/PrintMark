@@ -43,6 +43,14 @@ def parser():
         help="create and select '+ BaseMark' copies of the selected PrusaSlicer presets "
         "(exit 3 while PrusaSlicer is open)",
     )
+    action.add_argument(
+        "--watch",
+        action="store_true",
+        help="keep running and warn about exports made without BaseMark (started at login)",
+    )
+    action.add_argument(
+        "--stop-watcher", action="store_true", help="stop the background export check"
+    )
     p.add_argument("--off", dest="enabled", action="store_false", default=None)
     p.add_argument("--on", dest="enabled", action="store_true")
     p.add_argument("--mode", choices=["auto", "interactive"])
@@ -93,6 +101,8 @@ def main(argv=None) -> int:
         args.demo,
         args.check_prusaslicer,
         args.setup_prusaslicer,
+        args.watch,
+        args.stop_watcher,
     )
     if args.gcode and any(standalone):
         cli.error("this action does not accept a G-code argument")
@@ -134,6 +144,12 @@ def main(argv=None) -> int:
             rows = lookup_id(log, args.lookup)
             print(json.dumps(rows, indent=2) if args.json else format_records(rows))
             return 0 if rows else 1
+        if args.watch or args.stop_watcher:
+            from .watch import run, stop
+
+            if args.watch:
+                return run(args.config)
+            return 0 if stop(args.config) else 1
         if args.check_prusaslicer or args.setup_prusaslicer:
             from .prusaslicer import (
                 SetupError,
@@ -176,8 +192,8 @@ def main(argv=None) -> int:
             from .popup import choose_placement
             from .service import demo_data
 
-            footprint, surface, placed, settings = demo_data()
-            choose_placement(footprint, surface, placed, settings, "PETG", "", demo=True)
+            plate, placements, settings = demo_data()
+            choose_placement(plate, placements, settings, "PETG", "", demo=True)
             return 0
         if args.settings or args.gcode is None:
             from .settings_ui import open_settings

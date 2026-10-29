@@ -23,11 +23,18 @@ def root():
         pass
 
 
+def single(material="PETG"):
+    """The demo plate's bracket on its own: the one-part export window."""
+    plate, placements, settings = demo_data(material)
+    return replace(plate, parts=plate.parts[:1]), placements[:1], settings
+
+
 def test_placement_drag_resize_rotate_invalid_accept_and_skip(root):
     from basemark.popup import PlacementWindow
 
-    footprint, surface, placed, settings = demo_data()
-    app = PlacementWindow(root, footprint, surface, placed, settings, "PETG", "A042", demo=True)
+    plate, placements, settings = single()
+    placed, surface = placements[0], plate.parts[0].surface
+    app = PlacementWindow(root, plate, placements, settings, "PETG", "A042", demo=True)
     root.update()
     assert app.status.cget("text").startswith("✓")
     assert app.ok.winfo_viewable()
@@ -58,8 +65,7 @@ def test_placement_drag_resize_rotate_invalid_accept_and_skip(root):
 def test_minimized_placement_window_is_restored(root):
     from basemark.popup import PlacementWindow
 
-    footprint, surface, placed, settings = demo_data()
-    app = PlacementWindow(root, footprint, surface, placed, settings, "PETG", "A042")
+    app = PlacementWindow(root, *single(), "PETG", "A042")
     root.update()
     root.iconify()
     root.update()
@@ -72,11 +78,63 @@ def test_minimized_placement_window_is_restored(root):
 def test_placement_accept(root):
     from basemark.popup import PlacementWindow
 
-    footprint, surface, placed, settings = demo_data()
-    app = PlacementWindow(root, footprint, surface, placed, settings, "PETG", "A042")
+    plate, placements, settings = single()
+    app = PlacementWindow(root, plate, placements, settings, "PETG", "A042")
     root.update()
+    assert app.ok.cget("text") == "Apply stamp"
     app.accept()
-    assert app.result == placed
+    assert app.result == placements
+
+
+def test_plate_select_leave_out_and_zoom(root):
+    from basemark.popup import PlacementWindow
+
+    plate, placements, settings = demo_data()
+    assert all(placements)  # the demo tag is big enough for a 3 mm label
+    app = PlacementWindow(root, plate, placements, settings, "PETG", "")
+    root.update()
+    assert app.ok.cget("text") == "Stamp 2 parts"
+    assert app.part_count.cget("text") == "PART 1 OF 2"
+    # Clicking the tag's label selects it and drags only that label.
+    tag = placements[1]
+    x, y = app.screen(tag.x, tag.y)
+    app.start_drag(SimpleNamespace(x=x, y=y))
+    assert app.index == 1
+    app.drag(SimpleNamespace(x=x, y=y + 1))
+    assert app.placements[0] == placements[0]
+    app.toggle_zoom()
+    root.update()
+    assert app.zoom_button.cget("text") == "Show the whole plate"
+    app.included.set(False)
+    app.toggle_part()
+    assert app.placements[1] is None
+    assert app.ok.cget("text") == "Stamp 1 part"
+    app.included.set(True)
+    app.toggle_part()
+    assert app.placements[1] is not None
+    app.step(1)
+    assert app.index == 0
+    app.placements[1] = replace(app.placements[1], x=999)
+    app.draw()
+    app.refresh_side()
+    assert str(app.ok.cget("state")) == "disabled"  # every label must fit before Apply
+    app.placements[1] = None
+    app.refresh_side()
+    app.accept()
+    assert app.result == [placements[0], None]
+
+
+def test_plate_part_without_room_can_be_switched_on(root):
+    from basemark.popup import PlacementWindow
+
+    plate, placements, settings = demo_data()
+    app = PlacementWindow(root, plate, [placements[0], None], settings, "PETG", "")
+    root.update()
+    app.select(1)
+    assert app.status.cget("text").endswith("Too small for a label")
+    app.included.set(True)
+    app.toggle_part()
+    assert app.placements[1] is not None
 
 
 def test_settings_save_and_hook(root, tmp_path):

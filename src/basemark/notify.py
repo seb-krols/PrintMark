@@ -13,7 +13,8 @@ import sys
 from pathlib import Path
 
 USER_SKIP = "Label skipped; file unchanged, no ID consumed."
-SECONDS = {"stamped": 6, "stamped-pending-audit": 20}  # skips and errors: 15 s
+UNSTAMPED = "unstamped"  # the background check found an export BaseMark never saw
+SECONDS = {"stamped": 6, "stamped-pending-audit": 20, UNSTAMPED: 30}  # others: 15 s
 
 
 def wanted(outcome) -> bool:
@@ -77,8 +78,23 @@ def texts(status: str, message: str) -> tuple[str, str, str]:
     """(tone, title, body) for a status written by the export."""
     if status == "stamped":
         label = message.removeprefix("Stamped ").split(" · ")[0]
-        detail = " · ".join(message.split(" · ")[1:]).rstrip(".")
+        details = message.split(" · ")[1:]
+        detail = " · ".join(details).rstrip(".")
+        if details and " of " in details[0]:  # "2 of 3 parts": some parts got no label
+            stamped, _, total = details[0].removesuffix(" parts").partition(" of ")
+            missing = int(total) - int(stamped)
+            rest = " · ".join(details[1:]).rstrip(".")
+            note = (
+                f"{missing} part{'s' if missing != 1 else ''} got no label (no room, or left out)."
+            )
+            return "warn", f"Stamped {label} on {details[0]}", f"{note}\n{rest}"
         return "ok", f"Stamped {label}", detail
+    if status == UNSTAMPED:
+        return (
+            "warn",
+            "Exported without BaseMark",
+            f"{message}\nTurn this warning off in BaseMark → Overview.",
+        )
     if status == "stamped-pending-audit":
         return "warn", "Stamped — record needs recovery", message
     reason = message.removeprefix("skipped — ")

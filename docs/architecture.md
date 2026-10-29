@@ -47,9 +47,12 @@ plane selection, full-circle/radius handling and new tests. It is deliberately d
 ## Geometry and physical limits
 
 Only annotated part extrusions contribute to the footprint. Skirt/brim/support/wipe/purge
-paths are excluded. Largest deposited island selection is conservative: islands joined only
-above the first layer still get one label total. The full stamp rectangle must fit the margin
-and solid deposited coverage through depth N plus a roof in layer N+1.
+paths are excluded. A plate is split into parts by PrusaSlicer's object labels (`; printing
+object` comments or firmware `M486 S<n>`), recorded per move by the parser; each part is
+labelled on its largest first-layer island. Without labels every island is its own part, a
+conservative choice: islands joined only above the first layer may get one label each. All
+labels share one rewrite pass and one part number per export. The full stamp rectangle must
+fit the margin and solid deposited coverage through depth N plus a roof in layer N+1.
 
 Text outlines are mirrored in machine X. The UI mirrors the **entire scene** into an underside
 view, so holes, dragging and text stay in agreement. Rotations happen in machine coordinates.

@@ -65,12 +65,17 @@ class Settings:
     material_map: dict[str, str] = field(default_factory=dict)
     label: str = ""
     notify: bool = True
+    # Label every part on the plate (off: only the largest part, as before 0.7).
+    every_part: bool = True
+    # Background check: warn when an export comes from a preset that doesn't run BaseMark.
+    warn_unstamped: bool = True
 
     def validate(self) -> Settings:
         if type(self.enabled) is not bool or self.mode not in {"auto", "interactive"}:
             raise SafeSkip("enabled must be true/false; mode must be auto or interactive")
-        if type(self.notify) is not bool:
-            raise SafeSkip("notify must be true/false")
+        for name in ("notify", "every_part", "warn_unstamped"):
+            if type(getattr(self, name)) is not bool:
+                raise SafeSkip(f"{name} must be true/false")
         for name, low, high in [
             ("layers", 1, 3),
             ("counter_digits", 1, 12),

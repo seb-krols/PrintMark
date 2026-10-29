@@ -10,6 +10,10 @@ the minimal regression profile `coupon.ini`.
 | `prusaslicer-2.8.1-petg-relative.gcode` | PETG metadata and M83 |
 | `prusaslicer-2.8.1-pla-absolute.gcode` | M82, coordinate restoration, retractions |
 
+`prusaslicer-2.7.4-plate-firmware.gcode` is PrusaSlicer `2.7.4+win64` output of three copies
+of the coupon on one plate (`coupon.ini` with `--gcode-label-objects firmware --duplicate 3`):
+`M486` object labels, for the per-part stamping tests.
+
 Regenerate with `python scripts/regenerate_fixtures.py /path/to/prusa-slicer`. Use the recorded
 version; generated comments include timestamps and paths, so regenerating need not be byte-identical.
 Synthetic programs in `tests/conftest.py` cover relative XYZ, malformed input, arc safe skips,
