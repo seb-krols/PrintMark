@@ -3,6 +3,21 @@
 This document distinguishes software checks from tests on physical printers. It is not a
 certificate of print quality or blanket firmware compatibility.
 
+## v0.8.0 (Windows 11, 2026-10-28)
+
+- 199 automated tests, including the license checks: Ed25519 signing and verification
+  against RFC 8032 test vectors; keys that round-trip, survive pasting across lines and are
+  rejected when signed by another key or edited; free, licensed, expired and invalid states;
+  the monthly count rolling over; an export over the limit left byte-identical while a
+  preview still works; a key lifting the limit; the countdown; the limit notice; key entry in
+  the app and with `--license-key`.
+- Frozen 0.8.0 `basemark.exe` in a scratch folder with the PrusaSlicer 2.7.4 three-part
+  plate: at 100 of 100 the export was skipped with the contact message and the file kept the
+  same checksum; after `--license-key` with a real owner key, *Stamped PLA · 3 parts ·
+  2 layers · 3 mm · 102 moves*.
+- Install test as for 0.7.0: install, background check, stamping, settings window, upgrade,
+  uninstall, settings and history preserved.
+
 ## v0.7.0 (Windows 11, 2026-10-28)
 
 - 189 automated tests, including new plate tests: synthetic plates with OctoPrint-style and

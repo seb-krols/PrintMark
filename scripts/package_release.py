@@ -15,6 +15,7 @@ from pathlib import Path
 
 from basemark import __version__
 
+PACKAGES = ("shapely", "numpy", "fonttools", "tomli-w", "filelock", "pillow", "pyinstaller")
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -74,6 +75,7 @@ def main(platform: str):
         ROOT / "INSTALL.md",
         ROOT / "CHANGELOG.md",
         ROOT / "LICENSE",
+        ROOT / "LICENSING.md",
         ROOT / "THIRD_PARTY_NOTICES.md",
         ROOT / "src/basemark/assets/OFL.txt",
         ROOT / "examples/config.toml",
@@ -92,7 +94,7 @@ def main(platform: str):
             bundle.write(path, path.relative_to(app_dir).as_posix())
         for path in files:
             bundle.write(path, path.relative_to(ROOT).as_posix())
-        for package in ("shapely", "numpy", "fonttools", "tomli-w", "filelock", "pyinstaller"):
+        for package in PACKAGES:
             dist = importlib.metadata.distribution(package)
             for entry in dist.files or []:
                 if any(word in entry.name.lower() for word in ("license", "copying", "notice")):

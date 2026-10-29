@@ -3,12 +3,13 @@ from __future__ import annotations
 import socket
 import stat
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
 from shapely import union_all
 
+from . import licensing
 from .config import Settings, atomic_write, load_settings, validate_paths
 from .counter import Counter, digest
 from .env import job_from, metadata
@@ -99,6 +100,20 @@ def process(
     preview: Path | None = None,
     choose=None,
 ) -> Outcome:
+    outcome = stamp_export(
+        path, config, overrides, env, dry_run=dry_run, preview=preview, choose=choose
+    )
+    if outcome.status.startswith("stamped"):
+        licensing.record_stamp(config.parent)
+        left = licensing.status(config.parent).remaining
+        if left is not None and left <= licensing.HEADS_UP and outcome.status == "stamped":
+            # Free use: count down before the monthly limit instead of surprising anyone.
+            note = f"{left} of {licensing.FREE_PER_MONTH} free stamps left this month."
+            outcome = replace(outcome, message=f"{outcome.message.rstrip('.')} · {note}")
+    return outcome
+
+
+def stamp_export(path, config, overrides, env, *, dry_run, preview, choose) -> Outcome:
     if overrides.get("enabled") is False:
         return Outcome("disabled", "BaseMark is off; file unchanged.")
     original, text = read_gcode(path)
@@ -108,6 +123,8 @@ def process(
     settings = load_settings(config, notes, overrides)
     if not settings.enabled:
         return Outcome("disabled", "BaseMark is off; file unchanged.")
+    if not dry_run and not licensing.status(config.parent).allowed:
+        raise SafeSkip(licensing.limit_reason())
     job = job_from(env, text, settings, str(path))
     program = parse(text, job.width, retain_layers=settings.layers + 1)
     footprint, parts = plate_parts(

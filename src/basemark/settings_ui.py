@@ -10,9 +10,9 @@ import tkinter as tk
 from dataclasses import asdict, replace
 from datetime import datetime
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
-from . import __version__
+from . import __version__, licensing
 from . import ui_common as ui
 from .audit import format_records, lookup_id, read_log
 from .config import (
@@ -348,6 +348,18 @@ class SettingsWindow:
             style="Card.Small.TLabel",
             wraplength=ui.px(270),
         ).pack(anchor="w")
+        license_row = ttk.Frame(right, style="Card.TFrame")
+        license_row.pack(fill="x", pady=(ui.px(10), 0))
+        self.license_line = ttk.Label(
+            license_row, text="", style="Card.Small.TLabel", wraplength=ui.px(200)
+        )
+        self.license_line.pack(side="left")
+        ttk.Button(
+            license_row,
+            text="License",
+            style="Link.TButton",
+            command=lambda: self.show("advanced"),
+        ).pack(side="right")
 
         frame, recent = ui.card(page, fill="x")
         head = ttk.Frame(recent, style="Card.TFrame")
@@ -405,6 +417,7 @@ class SettingsWindow:
 
     def refresh_overview(self):
         self.refresh_label()
+        self.refresh_license()
         for child in (*self.last_export.winfo_children(), *self.history.winfo_children()):
             child.destroy()
         report = read_last_export(self.path)
@@ -672,8 +685,34 @@ class SettingsWindow:
         self.page_title(
             page,
             "Advanced",
-            "Numbering, record files and recovery tools. Most labs never need to change these.",
+            "License, numbering, record files and recovery tools.",
         )
+        ttk.Label(page, text="LICENSE", style="Eyebrow.TLabel").pack(anchor="w")
+        _, body = ui.card(page, fill="x", pady=(ui.px(6), ui.px(16)))
+        self.license_status = ttk.Label(
+            body, text="", style="Card.Heading.TLabel", wraplength=ui.px(600)
+        )
+        self.license_status.pack(anchor="w")
+        ttk.Label(
+            body,
+            text="BaseMark is free for personal, hobby, student and other noncommercial use; "
+            "businesses need a paid license. Without a key it stamps up to "
+            f"{licensing.FREE_PER_MONTH} exports a month. For more, ask for a key: free for "
+            f"noncommercial groups such as student teams and school labs, paid for commercial "
+            f"use. Contact {licensing.CONTACT}.",
+            style="Card.Small.TLabel",
+            wraplength=ui.px(600),
+        ).pack(anchor="w", pady=(ui.px(4), ui.px(10)))
+        buttons = ttk.Frame(body, style="Card.TFrame")
+        buttons.pack(anchor="w")
+        ttk.Button(
+            buttons, text="Enter license key…", style="Accent.TButton", command=self.enter_key
+        ).pack(side="left")
+        ttk.Button(buttons, text="License terms", command=self.open_terms).pack(
+            side="left", padx=(ui.px(8), 0)
+        )
+        self.refresh_license()
+
         ttk.Label(page, text="NUMBERING & RECORDS", style="Eyebrow.TLabel").pack(anchor="w")
         _, body = ui.card(page, fill="x", pady=(ui.px(6), ui.px(16)))
         self.setting_row(
@@ -751,6 +790,40 @@ class SettingsWindow:
         self.root.clipboard_clear()
         self.root.clipboard_append(self.hook.get())
         self.say("Command copied.", "ok")
+
+    def refresh_license(self):
+        text = licensing.status(self.path.parent).describe()
+        for name in ("license_status", "license_line"):
+            if hasattr(self, name):
+                getattr(self, name).configure(text=text)
+
+    def enter_key(self):
+        key = simpledialog.askstring(
+            "BaseMark license key", "Paste the license key you received:", parent=self.root
+        )
+        if not key:
+            return
+        try:
+            found = licensing.install_key(self.path.parent, key)
+        except (ValueError, OSError) as exc:
+            messagebox.showwarning("Key not installed", str(exc).capitalize(), parent=self.root)
+            return
+        self.refresh_license()
+        self.say(f"{found.describe()}. Thank you!", "ok")
+
+    def open_terms(self):
+        base = Path(sys.executable).parent if getattr(sys, "frozen", False) else None
+        terms = (base or Path(__file__).resolve().parents[2]) / "LICENSING.md"
+        if sys.platform == "win32" and terms.is_file():
+            os.startfile(terms)  # noqa: S606 - the bundled license summary
+        else:
+            messagebox.showinfo(
+                "BaseMark license",
+                "PolyForm Noncommercial 1.0.0: free for personal, hobby and student use and "
+                f"for noncommercial organizations. Commercial use needs a license from "
+                f"{licensing.CONTACT}.",
+                parent=self.root,
+            )
 
     def open_folder(self):
         folder = self.path.parent

@@ -263,3 +263,19 @@ def test_closing_with_unsaved_changes_asks_first(root, tmp_path, monkeypatch):
     monkeypatch.setattr(messagebox, "askyesnocancel", lambda *a, **k: True)
     app.close()
     assert load_settings(config).layers == 3
+
+
+def test_license_card_and_key_entry(root, tmp_path, monkeypatch):
+    from basemark import licensing
+    from basemark.settings_ui import SettingsWindow, simpledialog
+
+    secret = bytes(range(32))
+    monkeypatch.setattr(licensing, "PUBLIC_KEY", licensing.public_key(secret))
+    app = SettingsWindow(root, tmp_path / "config.toml")
+    root.update()
+    assert app.license_line.cget("text").startswith("Free use: 0 of 100")
+    key = licensing.make_key(secret, "Print Lab", "commercial", None, "t1")
+    monkeypatch.setattr(simpledialog, "askstring", lambda *a, **k: key)
+    app.enter_key()
+    assert app.license_status.cget("text") == "Licensed to Print Lab (commercial)"
+    assert app.license_line.cget("text") == "Licensed to Print Lab (commercial)"

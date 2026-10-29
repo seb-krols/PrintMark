@@ -56,5 +56,8 @@ handling; a shared `counter.json` on a network drive is not an adequate substitu
 - A native upstream slicer implementation using its text/negative-volume tools, allowing
   material-aware labels before toolpath generation and a true 3D preview.
 
-MIT is the chosen project license for easy reuse. Commercial positioning, naming and any
-institutional ownership questions should be settled by the owner before public branding.
+Since 0.8.0 BaseMark is licensed under PolyForm Noncommercial 1.0.0: free for noncommercial
+use, commercial use by separate paid license, with a free monthly allowance of 100 stamps
+unlocked by signed keys ([LICENSING.md](../LICENSING.md)). Still to settle before selling
+licenses: a written commercial license agreement and prices, and any institutional ownership
+questions (the project started at UBC IGEN) with UBC's innovation office.

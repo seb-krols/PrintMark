@@ -82,7 +82,9 @@ begin
   Hint.Caption := 'Adds "+ BaseMark" copies of the print and printer presets selected in ' +
     'PrusaSlicer (stamp on export, arc fitting off, plain G-code) and selects them. ' +
     'Your own presets are not changed. PrusaSlicer needs to be closed for this step.' + #13#10#13#10 +
-    'Labels show the material, e.g. PLA. A part number can be switched on later in BaseMark.';
+    'Labels show the material, e.g. PLA. A part number can be switched on later in BaseMark.' + #13#10#13#10 +
+    'Free for noncommercial use (100 stamped exports a month without a license key); ' +
+    'commercial use needs a license. See LICENSING.md.';
 end;
 
 { The running export check holds the program files open: end it before replacing them. }

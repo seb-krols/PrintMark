@@ -12,3 +12,6 @@ build/
 .coverage
 coverage.xml
 htmlcov/
+
+# Never commit a license signing key (see scripts/issue_license.py)
+*signing-key*

@@ -59,6 +59,8 @@ Everything lives in the BaseMark folder (`%APPDATA%\BaseMark\` on Windows):
 | `log.csv` | One row per numbered export: ID, UTC time, material, export name, objects, computer, layers, text height, removed filament, SHA-256 of the file |
 | `last-export.json` | The latest export's result, shown on the Overview |
 | `watcher.lock` | Held by the background export check while it runs |
+| `usage.json` | Stamped exports this calendar month, for the free monthly limit |
+| `license.key` | The license key, if one was entered |
 
 Only exports with part numbers use the counter and the log. With several parts on a plate,
 all parts carry the export's number and the row lists every object.
@@ -87,6 +89,8 @@ basemark --check-prusaslicer                              # exit 0 ready, 2 need
 basemark --watch                                          # the background export check
 basemark --stop-watcher                                   # end it (the installer does this)
 basemark --demo                                           # the export window with a sample plate
+basemark --license                                        # license status and this month's count
+basemark --license-key BASEMARK-1.…                       # enter a license key (exit 1 if invalid)
 basemark --dump-env job.gcode                             # save the slicer's settings; no stamp
 ```
 
@@ -94,6 +98,21 @@ basemark --dump-env job.gcode                             # save the slicer's se
 writes relevant slicer variables to `environment.json` next to the config and omits unrelated
 settings such as printer-host credentials; `--dump-all-env` includes everything and **may
 contain secrets**. Run `basemark --help` for every option.
+
+## License and the monthly limit
+
+Without a license key, BaseMark stamps up to 100 exports per calendar month and PC
+(`usage.json`; a plate with several parts counts once). Previews, `--check` and skipped
+exports do not count. From 20 left, the *Stamped* notice shows how many remain. Over the
+limit, an export is a safe skip: the G-code is left unchanged and the notice says *Free
+monthly limit reached*, with the contact address. An expired or invalid `license.key` counts
+as no key, and the Advanced page says why.
+
+A key is `BASEMARK-1.<payload>.<signature>`: a short JSON statement (holder, use, optional
+last day) signed with the author's Ed25519 key and checked offline against the public key in
+`licensing.py`. Keys are issued with `scripts/issue_license.py`, which needs the author's
+private signing key; that key is never stored in the repository. See
+[LICENSING.md](../LICENSING.md) for the terms.
 
 ## The background export check
 

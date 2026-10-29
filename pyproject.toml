@@ -4,11 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "basemark"
-version = "0.7.0"
-description = "Material and part-ID stamps for PrusaSlicer, built for print labs."
+version = "0.8.0"
+description = "Material labels printed into the underside of every part, for PrusaSlicer. Free for noncommercial use."
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE"]
 authors = [{name = "Sebastians Krols"}]
 dependencies = [
     "shapely>=2.1,<3",

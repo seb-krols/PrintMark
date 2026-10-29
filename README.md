@@ -11,7 +11,7 @@ not changed.
 Built at the UBC IGEN 3D Print Shop by Sebastians Krols. PrintMark is the repository;
 BaseMark is the application.
 
-> **Status: v0.7 lab pilot.** The software is tested; physical results are not yet
+> **Status: v0.8 lab pilot.** The software is tested; physical results are not yet
 > qualified. Print a test part on each printer and material before relying on it
 > ([lab test plan](docs/lab-validation.md)).
 
@@ -32,6 +32,8 @@ BaseMark is the application.
   up later under **Find part**.
 - **Fails safe.** If BaseMark cannot handle a file with certainty (unusual G-code, too
   little solid area), it leaves the file exactly as PrusaSlicer made it.
+- **Free for noncommercial use.** Hobbyists, student teams and schools use it for free;
+  businesses need a license. See [License and commercial use](#license-and-commercial-use).
 
 ## Install (Windows)
 
@@ -196,6 +198,32 @@ Software checks with the test part (plain G-code, arc fitting off) through the r
 
 Bambu printers have not been tested yet. None of this replaces printing test parts.
 
+## License and commercial use
+
+BaseMark is **free for noncommercial use and paid for commercial use**. It is
+*source-available* under the
+[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/):
+anyone may read, use and change the code, but not to make money with it.
+
+| Who | Cost | What to do |
+| --- | --- | --- |
+| Hobbyists, makers, clubs | Free | Just install it. |
+| Student groups and design teams | Free | Just install it; ask for a free key if 100 stamps a month is not enough. |
+| Schools, universities, makerspaces, charities, public bodies (noncommercial work) | Free | As above. |
+| Businesses, print services and print farms, anyone selling prints or products made with it | Paid license | Contact the author before use. |
+
+**Monthly limit.** Without a license key, BaseMark stamps up to **100 exports per calendar
+month**. The *Stamped* notice counts down the last 20. After that, exports are saved
+**unchanged** and the notice says whom to contact; stamping starts again next month. A
+license key removes the limit: enter it under **Advanced → License**. The Overview always
+shows the current count.
+
+**Get a key or a commercial license:** email **sebastians.krols@gmail.com** with your
+organisation, what you print, and roughly how many exports a month.
+
+The limit is a friendly reminder, not copy protection; the [LICENSE](LICENSE) is what counts.
+[LICENSING.md](LICENSING.md) explains the terms in plain language, with examples.
+
 ## More documentation
 
 - [Installation guide](INSTALL.md): manual setup, upgrades, removal, troubleshooting.
@@ -219,8 +247,10 @@ Python 3.11+ with Tk. Windows installers are built locally with
 `scripts\build_windows.ps1` and attached to Releases, because GitHub Actions currently stops
 before any job starts (see [verification](docs/verification.md)).
 
-BaseMark works offline: no accounts, cloud service or telemetry. MIT covers the project code;
-the bundled Lato Bold font keeps its [SIL Open Font License](src/basemark/assets/OFL.txt).
+BaseMark works offline: no accounts, cloud service or telemetry; the license check and the
+monthly count stay on the PC. The bundled Lato Bold font keeps its
+[SIL Open Font License](src/basemark/assets/OFL.txt); see
+[third-party notices](THIRD_PARTY_NOTICES.md).
 BaseMark subtracts toolpaths; it does not reslice, so very fine lettering can soften. The
 label is only as accurate as the filament selected in PrusaSlicer, and is not a material
 certification.

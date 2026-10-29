@@ -1,5 +1,20 @@
 # Changes
 
+## 0.8.0 — license: free for noncommercial use
+
+- **New license: PolyForm Noncommercial 1.0.0** (was MIT). Free for hobbyists, student
+  groups, schools, universities, charities and public bodies; commercial use needs a paid
+  license. [LICENSING.md](LICENSING.md) explains it in plain language.
+- **Free monthly allowance: 100 stamped exports per calendar month.** From 20 left, the
+  *Stamped* notice counts down. Over the limit, exports are left unchanged and the notice
+  *Free monthly limit reached* says whom to contact. Previews, checks and skipped exports
+  don't count; a plate counts once.
+- **License keys** remove the limit: free for noncommercial groups that need more, paid for
+  businesses. Enter one under **Advanced → License** or with `--license-key`; `--license`
+  prints the status. Keys are signed and checked offline; nothing is sent anywhere.
+- The Overview shows this month's count or the license holder.
+- Release archives now include LICENSING.md and Pillow's license text.
+
 ## 0.7.0 — every part on the plate, export warning
 
 - **Every part on the plate gets a label.** Parts are told apart by PrusaSlicer's

@@ -12,6 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .licensing import LIMIT_REACHED
+
 USER_SKIP = "Label skipped; file unchanged, no ID consumed."
 UNSTAMPED = "unstamped"  # the background check found an export BaseMark never saw
 SECONDS = {"stamped": 6, "stamped-pending-audit": 20, UNSTAMPED: 30}  # others: 15 s
@@ -98,6 +100,12 @@ def texts(status: str, message: str) -> tuple[str, str, str]:
     if status == "stamped-pending-audit":
         return "warn", "Stamped — record needs recovery", message
     reason = message.removeprefix("skipped — ")
+    if reason.startswith(LIMIT_REACHED):
+        return (
+            "warn",
+            "Free monthly limit reached",
+            f"{reason[:1].upper()}{reason[1:]}\nThe G-code was exported unchanged.",
+        )
     return (
         "bad" if status == "error" else "warn",
         "Export not stamped",

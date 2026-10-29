@@ -4,6 +4,11 @@ BaseMark is the application in the **PrintMark** repository. This pilot targets 
 PrusaSlicer and plain text G-code for the shop's MK3S and Bambu profiles. Python is not needed.
 Printer/profile qualification and physical coupon tests are still required.
 
+BaseMark is free for noncommercial use (hobbyists, student groups, schools) and needs a paid
+license for commercial use. Without a license key it stamps up to 100 exports a month; see
+[LICENSING.md](LICENSING.md). A key is entered under **Advanced → License** and survives
+upgrades (it is stored in `%APPDATA%\BaseMark\license.key`).
+
 **Build status (2026-10-23):** the Windows installer is built and tested on a native Windows 11
 PC: install, upgrade and uninstall checks pass, and real PrusaSlicer 2.7.4 and 2.9.6 exports
 with stock Prusa profiles (MK4S, MK4, CORE One, MK3.9, XL, MINI, MK3S) were stamped. GitHub

@@ -51,6 +51,10 @@ def parser():
     action.add_argument(
         "--stop-watcher", action="store_true", help="stop the background export check"
     )
+    action.add_argument(
+        "--license", action="store_true", help="show the license and this month's free use"
+    )
+    action.add_argument("--license-key", metavar="KEY", help="install a BaseMark license key")
     p.add_argument("--off", dest="enabled", action="store_false", default=None)
     p.add_argument("--on", dest="enabled", action="store_true")
     p.add_argument("--mode", choices=["auto", "interactive"])
@@ -103,6 +107,8 @@ def main(argv=None) -> int:
         args.setup_prusaslicer,
         args.watch,
         args.stop_watcher,
+        args.license,
+        args.license_key,
     )
     if args.gcode and any(standalone):
         cli.error("this action does not accept a G-code argument")
@@ -144,6 +150,17 @@ def main(argv=None) -> int:
             rows = lookup_id(log, args.lookup)
             print(json.dumps(rows, indent=2) if args.json else format_records(rows))
             return 0 if rows else 1
+        if args.license or args.license_key:
+            from .licensing import install_key, status
+
+            if args.license_key:
+                try:
+                    install_key(args.config.parent, args.license_key)
+                except ValueError as exc:
+                    print(f"BaseMark: key not installed — {exc}", file=sys.stderr)
+                    return 1
+            print(status(args.config.parent).describe())
+            return 0
         if args.watch or args.stop_watcher:
             from .watch import run, stop
 
