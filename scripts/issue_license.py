@@ -8,6 +8,9 @@ Issue a key (signing key from --signing-key or the BASEMARK_SIGNING_KEY variable
     python scripts/issue_license.py --holder "Acme Inc." --use commercial --until 2027-12-31
     python scripts/issue_license.py --holder "UBC Formula Racing" --use noncommercial
 
+Every issued key is also added to issued-keys.csv next to the signing key, so there is a
+record of who has which key.
+
 Keep the signing key secret and backed up (e.g. in a password manager). Anyone with it can
 create keys; without it no new keys can be made for the released versions.
 """
@@ -15,6 +18,7 @@ create keys; without it no new keys can be made for the released versions.
 from __future__ import annotations
 
 import argparse
+import csv
 import os
 import secrets
 import sys
@@ -56,7 +60,16 @@ def main() -> int:
     secret = bytes.fromhex(Path(args.signing_key).read_text(encoding="ascii").strip())
     if public_key(secret) != PUBLIC_KEY:
         parser.error("this signing key does not match PUBLIC_KEY in licensing.py")
-    key = make_key(secret, args.holder, args.use, args.until, secrets.token_hex(4))
+    key_id = secrets.token_hex(4)
+    key = make_key(secret, args.holder, args.use, args.until, key_id)
+    ledger = Path(args.signing_key).with_name("issued-keys.csv")
+    new = not ledger.exists()
+    with ledger.open("a", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        if new:
+            writer.writerow(["issued", "id", "holder", "use", "until", "key"])
+        until = args.until.isoformat() if args.until else ""
+        writer.writerow([date.today().isoformat(), key_id, args.holder, args.use, until, key])
     print(parse_key(key).describe())
     print(key)
     return 0

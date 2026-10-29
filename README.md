@@ -37,9 +37,8 @@ BaseMark is the application.
 
 ## Install (Windows)
 
-1. While signed in to GitHub with access to this private repository, open
-   [**Releases**](https://github.com/seb-krols/PrintMark/releases) and download the newest
-   `basemark-…-windows-x64-setup.exe`.
+1. Open [**Releases**](https://github.com/seb-krols/PrintMark/releases) and download the
+   newest `basemark-…-windows-x64-setup.exe`.
 2. In PrusaSlicer, select the printer and print preset you normally use, then **close
    PrusaSlicer**.
 3. Run the installer. Keep **Connect PrusaSlicer now** ticked and click **Install**.
@@ -223,6 +222,7 @@ organisation, what you print, and roughly how many exports a month.
 
 The limit is a friendly reminder, not copy protection; the [LICENSE](LICENSE) is what counts.
 [LICENSING.md](LICENSING.md) explains the terms in plain language, with examples.
+Contributions are welcome under the terms in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## More documentation
 

@@ -24,8 +24,8 @@ fitting and binary G-code support, so stock Prusa presets work without `+ BaseMa
 
 ## First public release
 
-- Review the private `seb-krols/PrintMark` repository and inspect native build artifacts.
-  The supplied release workflow creates draft releases, not automatic public launches.
+- Inspect native build artifacts before each release. The supplied release workflow
+  creates draft releases, not automatic public launches.
 - Add verified physical results and a short recording of a real placement/export interaction.
 - Keep release notes explicit about tested slicer/printer combinations and known safe skips.
 - Add signing/notarization when distribution scale warrants it.

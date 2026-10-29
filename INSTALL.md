@@ -18,8 +18,7 @@ attached to [Releases](https://github.com/seb-krols/PrintMark/releases). See the
 
 ## 1. Download and install
 
-While signed into the GitHub account with access to this private repository, open
-[Releases](https://github.com/seb-krols/PrintMark/releases) and pick the newest
+Open [Releases](https://github.com/seb-krols/PrintMark/releases) and pick the newest
 **Windows pilot**. (Once GitHub Actions runs again, every successful
 [Windows installer build](https://github.com/seb-krols/PrintMark/actions/workflows/windows.yml)
 also has a `basemark-windows-x64` artifact with the same files.) The downloads are:
@@ -43,7 +42,7 @@ after checking the download source and checksum.
 If your institution blocks unsigned software, ask its IT administrator about deployment.
 
 Future reviewed versions will appear in [Releases](https://github.com/seb-krols/PrintMark/releases).
-Private repository artifacts require GitHub access and expire; keep the tested lab build locally.
+Actions build artifacts expire after a while; keep the tested lab build locally.
 
 ## 2. Connect PrusaSlicer
 

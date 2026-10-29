@@ -59,7 +59,8 @@ ask for a free key.
 **Can I change the code?** Yes, for noncommercial purposes. Keep the `Required Notice` line
 from LICENSE in any copy you give to others.
 
-**Can I contribute?** Please get in touch first. To keep offering commercial licenses for the
-whole project, the author needs permission to license contributions that way too.
+**Can I contribute?** Yes, see [CONTRIBUTING.md](CONTRIBUTING.md). To keep offering
+commercial licenses for the whole project, contributions are accepted only with permission
+to license them that way too.
 
 Third-party components keep their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).

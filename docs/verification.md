@@ -171,8 +171,8 @@ more conservative runtime baseline.
 
 ## Still to be verified
 
-- Windows and macOS CI execution and fresh-machine standalone tests. The private repository
-  is now hosted at `seb-krols/PrintMark`. Initial push and manual CI/Windows runs on
+- Windows and macOS CI execution and fresh-machine standalone tests. The repository is hosted
+  at `seb-krols/PrintMark`. Initial push and manual CI/Windows runs on
   2026-10-22 ended in `startup_failure` before any job was created. No build logs or check
   annotations were exposed by the API; Actions is enabled. Local actionlint validation passed.
   See [Windows run](https://github.com/seb-krols/PrintMark/actions/runs/39834938542).
