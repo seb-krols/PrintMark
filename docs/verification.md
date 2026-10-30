@@ -171,16 +171,12 @@ more conservative runtime baseline.
 
 ## Still to be verified
 
-- Windows and macOS CI execution and fresh-machine standalone tests. The repository is hosted
-  at `seb-krols/PrintMark`. Initial push and manual CI/Windows runs on
-  2026-10-22 ended in `startup_failure` before any job was created. No build logs or check
-  annotations were exposed by the API; Actions is enabled. Local actionlint validation passed.
-  See [Windows run](https://github.com/seb-krols/PrintMark/actions/runs/39834938542).
-  A native Windows build has succeeded locally (above), not yet in CI. `Runner availability check` is a manual
-  diagnostic with no checkout or third-party actions to isolate runner startup problems;
-  [it also failed before creating a job](https://github.com/seb-krols/PrintMark/actions/runs/39835220914).
-  Both PowerShell scripts pass the native PowerShell parser. Account/Actions access needs
-  investigation in GitHub's signed-in UI; the API does not identify the cause.
+- Windows and macOS CI execution and fresh-machine standalone tests. While the repository
+  was private, every GitHub Actions run (CI, Windows and the manual `Runner availability
+  check`, which has no checkout or third-party actions) ended in `startup_failure` before any
+  job was created; the API did not identify the cause. Local actionlint validation passed and
+  both PowerShell scripts pass the native PowerShell parser. Native Windows builds succeed
+  locally (above), not yet in CI.
 - The owner's exact Windows/PrusaSlicer version and both MK3S and Bambu printer profiles.
   PrusaSlicer 2.7.4 with stock MK3S profiles is covered above; Bambu is not.
 - Interactive export (placement popup) from the PrusaSlicer GUI on the actual Windows PCs;
