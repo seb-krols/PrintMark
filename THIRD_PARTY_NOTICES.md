@@ -1,7 +1,7 @@
 # Third-party notices
 
 BaseMark's original code is licensed under the PolyForm Noncommercial License 1.0.0 (see
-[LICENSE](LICENSE) and [LICENSING.md](LICENSING.md)). Third-party components keep their own
+[LICENSE.md](LICENSE.md) and [LICENSING.md](LICENSING.md)). Third-party components keep their own
 licenses, which are unaffected.
 
 | Component | License | Use |

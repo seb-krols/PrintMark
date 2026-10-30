@@ -1,9 +1,9 @@
 # Licensing BaseMark
 
 BaseMark is **free for noncommercial use** and **paid for commercial use**. This page explains
-what that means in practice. The legal terms are in [LICENSE](LICENSE) (the
+what that means in practice. The legal terms are in [LICENSE.md](LICENSE.md) (the
 [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/));
-if this page and LICENSE ever disagree, LICENSE wins.
+if this page and LICENSE.md ever disagree, LICENSE.md wins.
 
 ## Who can use it for free
 
@@ -57,7 +57,7 @@ noncommercial institution is fine under the license. If you need more than 100 s
 ask for a free key.
 
 **Can I change the code?** Yes, for noncommercial purposes. Keep the `Required Notice` line
-from LICENSE in any copy you give to others.
+from LICENSE.md in any copy you give to others.
 
 **Can I contribute?** Yes, see [CONTRIBUTING.md](CONTRIBUTING.md). To keep offering
 commercial licenses for the whole project, contributions are accepted only with permission

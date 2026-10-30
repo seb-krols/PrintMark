@@ -1,6 +1,6 @@
 """License keys and the free monthly allowance.
 
-BaseMark is free for noncommercial use (PolyForm Noncommercial 1.0.0, see LICENSE);
+BaseMark is free for noncommercial use (PolyForm Noncommercial 1.0.0, see LICENSE.md);
 commercial use needs a paid license from the author. Without a key, BaseMark stamps up to
 FREE_PER_MONTH exports per calendar month; after that, exports are left unchanged and the
 notice says whom to contact. Keys are free for noncommercial groups (student teams, school

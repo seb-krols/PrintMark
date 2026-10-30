@@ -74,7 +74,7 @@ def main(platform: str):
         ROOT / "README.md",
         ROOT / "INSTALL.md",
         ROOT / "CHANGELOG.md",
-        ROOT / "LICENSE",
+        ROOT / "LICENSE.md",
         ROOT / "LICENSING.md",
         ROOT / "THIRD_PARTY_NOTICES.md",
         ROOT / "src/basemark/assets/OFL.txt",

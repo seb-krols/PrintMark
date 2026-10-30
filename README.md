@@ -220,7 +220,7 @@ shows the current count.
 **Get a key or a commercial license:** email **sebastians.krols@gmail.com** with your
 organisation, what you print, and roughly how many exports a month.
 
-The limit is a friendly reminder, not copy protection; the [LICENSE](LICENSE) is what counts.
+The limit is a friendly reminder, not copy protection; the [LICENSE.md](LICENSE.md) is what counts.
 [LICENSING.md](LICENSING.md) explains the terms in plain language, with examples.
 Contributions are welcome under the terms in [CONTRIBUTING.md](CONTRIBUTING.md).
 
