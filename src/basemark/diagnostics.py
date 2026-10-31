@@ -34,6 +34,8 @@ def record_export(
             "timestamp": datetime.now(UTC).isoformat(),
             # PrusaSlicer runs the hook on a temporary file; show the name being exported.
             "source": env.get("SLIC3R_PP_OUTPUT_NAME") or str(source),
+            # "File" for Export G-code; the printer host type for Send to printer.
+            "host": env.get("SLIC3R_PP_HOST", ""),
         }
         with FileLock(str(target) + ".lock", timeout=0.1):
             atomic_write(target, json.dumps(report, indent=2, ensure_ascii=False).encode("utf-8"))

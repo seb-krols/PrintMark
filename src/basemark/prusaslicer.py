@@ -39,6 +39,32 @@ class Preset:
 
 
 @dataclass(frozen=True)
+class PhysicalPrinter:
+    """A printer PrusaSlicer sends jobs to over the network (OctoPrint, PrusaLink, ...)."""
+
+    name: str
+    presets: tuple[str, ...]  # the printer presets it may be used with
+    host_type: str
+    file: Path
+
+    @property
+    def host(self) -> str:
+        return HOSTS.get(self.host_type.lower(), self.host_type or "network printer")
+
+
+HOSTS = {
+    "octoprint": "OctoPrint",
+    "prusalink": "PrusaLink",
+    "prusaconnect": "Prusa Connect",
+    "duet": "Duet",
+    "flashair": "FlashAir",
+    "astrobox": "AstroBox",
+    "repetier": "Repetier",
+    "mks": "MKS",
+}
+
+
+@dataclass(frozen=True)
 class Finding:
     ok: bool | None  # True = good, False = must fix, None = note
     text: str
@@ -88,6 +114,45 @@ def read_ini(path: Path) -> dict[str, dict[str, str]]:
 def selected(data: Path) -> dict[str, str]:
     presets = read_ini(data / "PrusaSlicer.ini").get("presets", {})
     return {kind: presets.get(kind, "") for kind in KINDS}
+
+
+def selected_physical(data: Path) -> str:
+    """The network printer chosen in PrusaSlicer's printer list, or "" for none."""
+    return read_ini(data / "PrusaSlicer.ini").get("presets", {}).get("physical_printer", "")
+
+
+def physical_printers(data: Path) -> dict[str, PhysicalPrinter]:
+    """PrusaSlicer's network printers by name. Their host passwords are never read out."""
+    found = {}
+    for path in sorted((data / "physical_printer").glob("*.ini")):
+        try:
+            values = read_ini(path)[""]
+        except OSError:
+            continue
+        names = split_strings(values.get("preset_names", ""))
+        if not any(names) and values.get("preset_name"):
+            names = [values["preset_name"]]
+        presets = tuple(name for name in names if name)
+        found[path.stem] = PhysicalPrinter(path.stem, presets, values.get("host_type", ""), path)
+    return found
+
+
+def add_printer_preset(printer: PhysicalPrinter, preset: str) -> None:
+    """Let a network printer be used with one more printer preset (backup kept)."""
+    names = join_strings(sorted({*printer.presets, preset}))
+    lines = printer.file.read_text(encoding="utf-8").splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.partition("=")[0].strip() == "preset_names":
+            ending = "\r\n" if line.endswith("\r\n") else "\n"
+            lines[i] = f"preset_names = {names}{ending}"
+            break
+    else:
+        if lines and not lines[-1].endswith("\n"):
+            lines[-1] += "\n"
+        lines.append(f"preset_names = {names}\n")
+    backup = printer.file.with_name(printer.file.name + ".basemark-backup")
+    atomic_write(backup, printer.file.read_bytes())
+    atomic_write(printer.file, "".join(lines).encode("utf-8"))
 
 
 def bundle_files(data: Path) -> list[Path]:
@@ -278,6 +343,28 @@ def check(settings: Settings, command: str, data: Path | None = None) -> list[Fi
         findings.append(
             Finding(None, f"{where} has several tools; BaseMark skips multi-tool jobs.")
         )
+    physical = selected_physical(data)
+    if physical:
+        network = physical_printers(data).get(physical)
+        if network is None:
+            findings.append(Finding(None, f"Physical printer “{physical}” was not found."))
+        elif network.presets and printer.name not in network.presets:
+            findings.append(
+                Finding(
+                    False,
+                    f"Physical printer “{physical}” ({network.host}) doesn't list printer "
+                    f"preset “{printer.name}”, so selecting it switches PrusaSlicer back to "
+                    f"“{network.presets[0]}”. Set up PrusaSlicer again.",
+                )
+            )
+        else:
+            findings.append(
+                Finding(
+                    True,
+                    f"Physical printer “{physical}” ({network.host}): Send to printer runs "
+                    "BaseMark too.",
+                )
+            )
     if not settings.enabled:
         findings.append(Finding(False, "BaseMark stamping is switched off (Overview)."))
     return findings
@@ -287,7 +374,7 @@ def format_findings(findings: list[Finding]) -> str:
     marks = {True: "[ok]  ", False: "[fix] ", None: "[note]"}
     lines = [f"{marks[f.ok]} {f.text}" for f in findings]
     verdict = (
-        "Ready: slice and use Export G-code."
+        "Ready: slice, then use Export G-code or Send to printer."
         if all(f.ok is not False for f in findings)
         else "Not ready yet: fix the items marked [fix]."
     )
@@ -356,13 +443,25 @@ def setup(command: str, data: Path | None = None) -> list[str]:
     write_preset(data / "print" / f"{name}.ini", values)
     choices["print"] = name
     done.append(f"Print preset “{name}”: BaseMark hook added, arc fitting off.")
+    printer_name = printer.name
     if printer.values.get("binary_gcode", "0") != "0":
         name, values = derived(printer, {"binary_gcode": "0"}, "printer_settings_id")
         write_preset(data / "printer" / f"{name}.ini", values)
-        choices["printer"] = name
+        choices["printer"] = printer_name = name
         done.append(f"Printer preset “{name}”: plain G-code.")
+        # A network printer only offers the printer presets it lists; add the copy there.
+        for network in physical_printers(data).values():
+            if printer.name in network.presets and name not in network.presets:
+                add_printer_preset(network, name)
+                done.append(f"Physical printer “{network.name}” ({network.host}): can use it.")
     else:
         done.append(f"Printer preset “{printer.name}” already exports plain G-code.")
+    physical = selected_physical(data)
+    network = physical_printers(data).get(physical) if physical else None
+    if network and printer_name in network.presets:
+        done.append(f"Send to printer “{physical}” ({network.host}) runs BaseMark too.")
     select(data, choices)
-    done.append("Selected in PrusaSlicer. Open PrusaSlicer, slice and use Export G-code.")
+    done.append(
+        "Selected in PrusaSlicer. Open PrusaSlicer, slice and use Export G-code or Send to printer."
+    )
     return done

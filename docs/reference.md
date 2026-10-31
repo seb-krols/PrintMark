@@ -57,7 +57,7 @@ Everything lives in the BaseMark folder (`%APPDATA%\BaseMark\` on Windows):
 | `config.toml` | Settings |
 | `counter.json` | The next part number, plus a journal that finishes an interrupted export |
 | `log.csv` | One row per numbered export: ID, UTC time, material, export name, objects, computer, layers, text height, removed filament, SHA-256 of the file |
-| `last-export.json` | The latest export's result, shown on the Overview |
+| `last-export.json` | The latest export's result, file name and printer host, shown on the Overview |
 | `watcher.lock` | Held by the background export check while it runs |
 | `usage.json` | Stamped exports this calendar month, for the free monthly limit |
 | `license.key` | The license key, if one was entered |
@@ -123,7 +123,24 @@ Once a file stops changing, it reads the first 4 KB and the last 512 KB. PrusaSl
 whose `post_process` setting doesn't mention BaseMark, and binary `.bgcode` files, produce
 an *Exported without BaseMark* notice. Files BaseMark stamped or already reported are
 ignored. It never changes files. `warn_unstamped = false` silences it; it then only idles.
-Uploads with **Send to printer** leave no local file and cannot be checked.
+
+**Send to printer.** PrusaSlicer copies the job to `%TEMP%\.PrusaSlicer.upload.xxxx-…` (no
+extension), runs the post-processing scripts on it with `SLIC3R_PP_HOST` set to the host
+type (`OctoPrint`, `PrusaLink`, …) and `SLIC3R_PP_OUTPUT_NAME` to the name on the printer,
+uploads it and deletes it. BaseMark stamps that copy like any export and records the host
+in `last-export.json`. The background check is woken by Windows as soon as such a copy
+appears and reads it at once, with sharing that lets PrusaSlicer delete it meanwhile. A copy
+from a print preset without BaseMark gives *Sent to the printer without BaseMark*; a binary
+one gives the warning only if BaseMark did not report it within 3 seconds. BaseMark's own
+file replacement waits up to 2 seconds if another program (a virus scanner, the background
+check) has the file open.
+
+**Physical printers.** PrusaSlicer's network printers (`physical_printer\*.ini`) only offer
+the printer presets they list. When **Set up PrusaSlicer** creates a `… + BaseMark` printer
+preset (for binary G-code printers), it adds it to every physical printer that lists the
+original, keeping a `.basemark-backup` copy; host addresses and passwords are left alone and
+never read out. The check reports the selected physical printer, and a physical printer
+that would switch PrusaSlicer back to another printer preset.
 
 ## Supported G-code
 

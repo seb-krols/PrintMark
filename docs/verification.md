@@ -3,6 +3,35 @@
 This document distinguishes software checks from tests on physical printers. It is not a
 certificate of print quality or blanket firmware compatibility.
 
+## v0.9.0 (Windows 11, 2026-10-30)
+
+- New automated tests for uploads: an upload copy from a preset without BaseMark is reported
+  once, hooked and stamped copies are not, a copy still being written is read again, copies
+  older than the check are ignored, binary copies wait for BaseMark's own report, reading
+  never blocks PrusaSlicer's delete, and BaseMark's replace waits for a briefly open file.
+  The hook stamps an extension-less upload copy and records host and target name. Setup adds
+  the `+ BaseMark` printer preset to physical printers (also the old single-preset format)
+  without touching their host settings; the check flags a physical printer that would switch
+  presets.
+- Real PrusaSlicer 2.7.4 **Send to printer** (sandboxed copy of the owner's settings, MK4IS
+  `+ BaseMark` presets, a physical printer of type OctoPrint pointing at a local test server
+  that answers like OctoPrint): the uploaded file arrived stamped (*Stamped PLA · 2 layers ·
+  3 mm · 32 moves*, host OctoPrint) and PrusaSlicer removed its temporary copy. With the hook
+  removed, the background check showed *Sent to the printer without BaseMark* naming the
+  print preset. With the hook and the background check both running, the upload was stamped
+  and no warning appeared.
+- Letters with walls, after a 0.8.0 test print showed no visible label. New tests stamp `PLA`
+  at 3 mm and 8 mm on relative- and absolute-E coupons and check both stamped layers:
+  nothing is printed inside the letters; wall lines cover at least 95% of the letter edges
+  (all but sharp inside corner tips); walls overlap neither each other nor, beyond the 15%
+  bonding overlap, the slicer's lines; a hole too small for a wall keeps the slicer's lines;
+  the slicer's retractions are unchanged and each added retraction is undone. The three real
+  PrusaSlicer 2.8.1 fixtures stamp with walls, upper layers byte-identical. A drawing of a
+  real stamped first layer showed empty letters, a continuous wall around each, and a wall
+  inside the *P*. Labels are spaced at least 1 mm apart.
+- 211 automated tests passed (one Tk test skipped).
+- Not yet tested: a real OctoPrint or PrusaLink printer, and a print of the walled letters.
+
 ## v0.8.0 (Windows 11, 2026-10-28)
 
 - 199 automated tests, including the license checks: Ed25519 signing and verification

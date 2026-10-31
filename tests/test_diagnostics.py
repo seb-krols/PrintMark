@@ -128,3 +128,22 @@ def test_environment_dump_cannot_overwrite_counter(job_file, tmp_path):
         == 0
     )
     assert counter.read_bytes() == original
+
+
+def test_send_to_printer_copy_is_stamped_and_named(gcode, tmp_path, monkeypatch):
+    # PrusaSlicer's Send to printer: a copy without extension in %TEMP%, host and target name
+    # in the environment (BackgroundSlicingProcess::prepare_upload).
+    upload = tmp_path / ".PrusaSlicer.upload.1a2b-3c4d-5e6f-7a8b"
+    upload.write_text(gcode, encoding="utf-8")
+    monkeypatch.setenv("SLIC3R_PP_HOST", "OctoPrint")
+    monkeypatch.setenv("SLIC3R_PP_OUTPUT_NAME", "bracket_0.2mm_PLA_MK3S.gcode")
+    shown = []
+    monkeypatch.setattr("basemark.notify.spawn", lambda *args: shown.append(args))
+    config = tmp_path / "config.toml"
+    assert main(["--config", str(config), "--mode", "auto", str(upload)]) == 0
+    assert upload.read_text(encoding="utf-8").startswith("; BASEMARK stamp")
+    report = json.loads((tmp_path / "last-export.json").read_text())
+    assert report["status"] == "stamped" and report["host"] == "OctoPrint"
+    assert report["source"] == "bracket_0.2mm_PLA_MK3S.gcode"
+    assert shown[0][1] == "stamped"
+    assert shown[0][3] == "bracket_0.2mm_PLA_MK3S.gcode (sent to OctoPrint)"

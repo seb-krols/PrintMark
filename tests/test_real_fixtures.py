@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from conftest import outline_lines, retractions_kept
 
 from basemark.gcode_parser import parse
 from basemark.service import process
@@ -19,13 +20,13 @@ def test_real_prusaslicer_output(name, tmp_path):
     stamped = target.read_text()
     # Original lines on the roof and every later layer are exactly preserved.
     assert stamped.split(";LAYER_CHANGE")[3:] == source.decode().split(";LAYER_CHANGE")[3:]
-    after = parse("\n".join(stamped.splitlines()[1:]))
+    body = "\n".join(stamped.splitlines()[1:])
+    after = parse(body)
     assert sum(m.delta_e for m in original.moves) - sum(
         m.delta_e for m in after.moves
     ) == pytest.approx(result.removed_e, abs=1e-5)
-    assert [m.delta_e for m in after.moves if m.delta_e < 0] == pytest.approx(
-        [m.delta_e for m in original.moves if m.delta_e < 0]
-    )
+    assert retractions_kept(original, after, body)
+    assert outline_lines(body)  # the letters got their walls
     assert after.moves[-1].end == pytest.approx(original.moves[-1].end)
 
 

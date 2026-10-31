@@ -4,14 +4,14 @@
 material, such as `PLA` or `PETG`, into the underside of every part you print. Even a failed
 print or a loose part found on a shelf can then be sorted into the right recycling bin.
 
-It works on the exported G-code: in the first two layers it leaves out the plastic where the
-letters go, so the label is a shallow recess you read from below. The rest of the print is
-not changed.
+It works on the exported G-code: in the first two layers each letter becomes an empty
+pocket with its own wall line around it, so the label is a crisp recess you read from below.
+The rest of the print is not changed.
 
 Built at the UBC IGEN 3D Print Shop by Sebastians Krols. PrintMark is the repository;
 BaseMark is the application.
 
-> **Status: v0.8 lab pilot.** The software is tested; physical results are not yet
+> **Status: v0.9 lab pilot.** The software is tested; physical results are not yet
 > qualified. Print a test part on each printer and material before relying on it
 > ([lab test plan](docs/lab-validation.md)).
 
@@ -26,8 +26,11 @@ BaseMark is the application.
   accept. It can also place them automatically without asking.
 - **Tells you the result.** A small notice in the screen corner says *Stamped PLA* or why
   an export was left unchanged.
-- **Warns about missed exports.** If someone exports with a print preset that isn't set up
-  for BaseMark, a warning appears, so unlabelled parts aren't missed. It can be turned off.
+- **Works with OctoPrint and PrusaLink.** Jobs sent with **Send to printer** are stamped
+  just like exported files.
+- **Warns about missed jobs.** If someone exports or sends a job with a print preset that
+  isn't set up for BaseMark, a warning appears, so unlabelled parts aren't missed. It can be
+  turned off.
 - **Optional part numbers.** Switch them on for `PLA 001`, `PLA 002`, … and look any number
   up later under **Find part**.
 - **Fails safe.** If BaseMark cannot handle a file with certainty (unusual G-code, too
@@ -108,6 +111,24 @@ as a part, so a part with several feet may get several labels. If you prefer one
 plate, switch off **Every part on the plate** on BaseMark's **Stamp** page; then only the
 largest part is labelled.
 
+### Printing over the network (OctoPrint, PrusaLink)
+
+BaseMark runs on **Send to printer** too: PrusaSlicer makes a temporary copy of the job, runs
+BaseMark on it (the export window opens as usual) and only then uploads it. Your printer
+gets the labelled file; the notice says, for example, *part.gcode (sent to OctoPrint)*.
+
+To set it up, select your network printer (PrusaSlicer's *physical printer*) and its print
+preset, close PrusaSlicer, and click **Set up PrusaSlicer** in BaseMark. The Overview then
+shows *Send to printer runs BaseMark too*.
+
+- **Several printer models** (say MK3S and MINI) have different print presets. Select each
+  printer and its usual print preset once and run **Set up PrusaSlicer** each time; the
+  `… + BaseMark` presets from earlier stay.
+- **Upload and Print** starts the print right after the upload. If you press **Esc** in the
+  export window, the job is printed without a label.
+- **Uploading through OctoPrint's web page** works as long as the file was made with
+  **Export G-code** from a `… + BaseMark` preset. Slicing inside OctoPrint is not supported.
+
 ### Notices
 
 After each export a notice appears in the screen corner for a few seconds:
@@ -116,16 +137,16 @@ After each export a notice appears in the screen corner for a few seconds:
   parts* when one part had no room.
 - **Export not stamped**: the reason is shown (part too small, arc moves, …). The file was
   exported unchanged.
-- **Exported without BaseMark**: the export came from a print preset that doesn't run
-  BaseMark, or was binary G-code. Select a `… + BaseMark` preset, or set the preset up in
-  BaseMark.
+- **Exported without BaseMark** / **Sent to the printer without BaseMark**: the job came
+  from a print preset that doesn't run BaseMark, or was binary G-code. Select a
+  `… + BaseMark` preset, or set the preset up in BaseMark.
 
 ![Warning after an export from a preset without BaseMark](docs/images/notice.png)
 
 The last warning comes from a small background check that starts with Windows. It looks
-only at new G-code files in PrusaSlicer's export folders, your Downloads and Desktop. It
-cannot see uploads with **Send to printer**, which leave no file on the PC. Both kinds of
-notice can be switched off on the Overview.
+only at new G-code files in PrusaSlicer's export folders, your Downloads and Desktop, and at
+the temporary copy PrusaSlicer uploads on **Send to printer**. It never changes them. Both
+kinds of notice can be switched off on the Overview.
 
 ### Part numbers and Find part
 
@@ -142,17 +163,21 @@ asks first.
 
 ## Text size and small parts
 
-The default text is **3 mm** tall (capital letters). The label is a gap in the bottom-layer
-lines, which are about 0.45 mm wide with a 0.4 mm nozzle. At 3 mm the letter strokes are
-about 0.55 mm and the holes inside letters such as *A* about 1 mm, just enough to stay open.
-Smaller text starts to fill in. Common 3D-printing guidance agrees: about 4 mm for text on a
-bottom face, with 2 mm failing and 3 mm marginal for embossed text.
+The default text is **3 mm** tall (capital letters). In the stamped layers no plastic goes
+into the letters; a wall line, drawn like the part's own perimeters and before its infill,
+runs around each letter, and the layer above bridges over. The wall gives every letter a
+clean edge the neighbouring lines cannot squash into. With a 0.4 mm nozzle the lines are
+about 0.45 mm wide; at 3 mm the letter strokes are about 0.55 mm. Letters are spaced at
+least 1 mm apart so each one has room for its wall. A hole inside a letter too small for a
+wall (the *A* at 3 mm) is printed solid by the slicer's own lines, so the letter keeps its
+shape. Common 3D-printing guidance: about 4 mm for text on a bottom face, with 2 mm failing
+and 3 mm marginal.
 
 | Label | Text size | Smallest flat bottom (1.5 mm edge margin) |
 | --- | --- | --- |
-| `PLA` | 7.3 × 3 mm | about 10 × 6 mm |
-| `PETG` | 9.9 × 3.1 mm | about 13 × 6 mm |
-| `PLA 001` | 15.2 × 3.1 mm | about 18 × 6 mm |
+| `PLA` | 8.8 × 3 mm | about 12 × 6 mm |
+| `PETG` | 11.8 × 3.1 mm | about 15 × 6 mm |
+| `PLA 001` | 18.1 × 3.1 mm | about 21 × 6 mm |
 
 Smaller parts are left without a label (and the notice says so). For an occasional small
 part, the **−** button goes down to 2 mm. Print a test first: below 3 mm the letters may not
@@ -192,9 +217,10 @@ Software checks with the test part (plain G-code, arc fitting off) through the r
 | PrusaSlicer | Stock printer profiles that stamp |
 | --- | --- |
 | 2.9.6 | MK4S (PLA, PETG), CORE One, MK4 Input Shaper, MK3.9S, XL Input Shaper (single tool), MINI Input Shaper, i3 MK3S |
-| 2.7.4 | MK4 / MK4 Input Shaper (PLA, PETG, plates of several parts), MK3.9, XL, MINI, i3 MK3S |
+| 2.7.4 | MK4 / MK4 Input Shaper (PLA, PETG, plates of several parts, **Send to printer** to OctoPrint), MK3.9, XL, MINI, i3 MK3S |
 | 2.8.1 | Regression fixtures and i3 MK3S hook (Linux) |
 
+OctoPrint uploads were tested against a local test server that answers like OctoPrint, not yet a real OctoPrint printer.
 Bambu printers have not been tested yet. None of this replaces printing test parts.
 
 ## License and commercial use

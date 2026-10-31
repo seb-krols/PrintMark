@@ -6,6 +6,7 @@ import os
 import re
 import string
 import tempfile
+import time
 import tomllib
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
@@ -199,6 +200,22 @@ def load_settings(path: Path, notes: str = "", overrides: dict | None = None) ->
     return Settings(**data).validate()
 
 
+def replace_file(source: str | Path, target: Path, *, attempts: int = 40) -> None:
+    """os.replace, retried for up to 2 s on Windows while another program has the target open.
+
+    Windows refuses to replace an open file, and virus scanners or BaseMark's background
+    check may read a new G-code file for a moment (uploads are stamped in %TEMP%).
+    """
+    for attempt in range(attempts):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if os.name != "nt" or attempt == attempts - 1:
+                raise
+            time.sleep(0.05)
+
+
 def atomic_write(path: Path, data: bytes, *, mode: int | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
@@ -209,7 +226,7 @@ def atomic_write(path: Path, data: bytes, *, mode: int | None = None) -> None:
             os.fsync(stream.fileno())
         if mode is not None:
             os.chmod(name, mode)
-        os.replace(name, path)
+        replace_file(name, path)
         if os.name != "nt":
             directory_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
             try:

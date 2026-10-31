@@ -100,6 +100,30 @@ def plate(sizes=((30, 14), (30, 14), (30, 14)), *, labels="octoprint", layers=4,
     return "\n".join(lines) + "\n"
 
 
+def outline_lines(text):
+    """Line numbers of the letter outlines BaseMark inserts (its own block of moves)."""
+    found, inside, types = set(), False, 0
+    for n, line in enumerate(text.splitlines()):
+        if line.startswith("; BaseMark letter outlines"):
+            inside, types = True, 0
+        elif inside:
+            found.add(n)
+            if line.startswith(";TYPE:"):
+                types += 1
+                inside = types < 2  # the block ends by restoring the slicer's ;TYPE
+    return found
+
+
+def retractions_kept(original, after, text):
+    """The slicer's retractions are untouched; every one BaseMark adds is undone."""
+    inserted = outline_lines(text)
+    kept = [m.delta_e for m in after.moves if m.delta_e < 0 and m.index not in inserted]
+    added = [m.delta_e for m in after.moves if m.length < 1e-9 and m.index in inserted]
+    return kept == pytest.approx([m.delta_e for m in original.moves if m.delta_e < 0]) and (
+        sum(added) == pytest.approx(0, abs=1e-6)
+    )
+
+
 @pytest.fixture
 def gcode():
     return coupon()

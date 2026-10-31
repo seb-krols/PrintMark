@@ -130,3 +130,103 @@ def test_notice_texts():
     assert body.startswith("1 part got no label")
     tone, title, _ = texts("stamped", "Stamped PLA · 3 parts · 2 layers · 3 mm · 9 moves.")
     assert tone == "ok" and title == "Stamped PLA"
+
+
+UPLOAD = ".PrusaSlicer.upload.1a2b-3c4d-5e6f-7a8b"  # PrusaSlicer's copy for Send to printer
+
+
+def test_upload_sent_without_basemark_is_reported_once(setup, notices, tmp_path):
+    config, data, _, _ = setup
+    temp = tmp_path / "Temp"
+    temp.mkdir()
+    watcher = Watcher(config, data=data, temp=temp, started=time.time() - 60)
+    watcher.tick()
+    export(temp, ".PrusaSlicer.upload.hooked", hook="basemark.exe")
+    (temp / ".1234.gcode.pp").write_text(export(tmp_path).read_text())  # Export G-code's copy
+    path = export(temp, UPLOAD)
+    found = watcher.tick_uploads()  # read at once: the copy is deleted after the upload
+    assert [p for p, _ in found] == [path]
+    assert "“0.20mm SPEED @MK4IS 0.4” doesn't run BaseMark" in found[0][1]
+    assert notices == ["unstamped-upload"]
+    assert watcher.tick_uploads() == []
+    path.unlink()
+    assert watcher.tick_uploads() == [] and watcher.uploads == {
+        str(temp / ".PrusaSlicer.upload.hooked")
+    }
+
+
+def test_upload_still_being_copied_is_read_again(setup, notices, tmp_path):
+    config, data, _, _ = setup
+    full = export(tmp_path).read_bytes()
+    path = tmp_path / UPLOAD
+    path.write_bytes(b"")
+    watcher = Watcher(config, data=data, temp=tmp_path, started=time.time() - 60)
+    assert watcher.tick_uploads() == []
+    path.write_bytes(full[: len(full) // 2])
+    assert watcher.tick_uploads() == [] and watcher.copying  # look again in 0.1 s
+    path.write_bytes(full)
+    assert [p for p, _ in watcher.tick_uploads()] == [path]
+    assert not watcher.copying
+    stuck = tmp_path / ".PrusaSlicer.upload.stuck"
+    stuck.write_bytes(full[:100])
+    assert watcher.tick_uploads(now=time.time() + 30) == [] and not watcher.copying
+
+
+def test_stamped_old_or_switched_off_uploads_are_quiet(setup, notices, tmp_path):
+    config, data, _, _ = setup
+    stamped = tmp_path / UPLOAD
+    stamped.write_text("; BASEMARK stamp PLA; layers=2\n" + export(tmp_path, "x.gcode").read_text())
+    assert inspect(stamped, upload=True) is None
+    export(tmp_path, ".PrusaSlicer.upload.old")
+    late = Watcher(config, data=data, temp=tmp_path, started=time.time() + 60)
+    assert late.tick_uploads() == []  # left over from before the check started
+    save_settings(config, Settings(warn_unstamped=False))
+    off = Watcher(config, data=data, temp=tmp_path, started=time.time() - 60)
+    off.tick()
+    assert off.tick_uploads() == [] and notices == []
+
+
+def test_binary_upload_waits_for_basemarks_own_report(setup, notices, tmp_path):
+    config, data, _, _ = setup
+    (tmp_path / UPLOAD).write_bytes(b"GCDE\x01\x00\x00\x00" + bytes(64))
+    watcher = Watcher(config, data=data, temp=tmp_path, started=time.time() - 60)
+    assert watcher.tick_uploads() == []  # a hooked BaseMark may be about to say so itself
+    report = {"timestamp": datetime.now(UTC).isoformat(), "source": "part.gcode"}
+    (config.parent / "last-export.json").write_text(json.dumps(report))
+    assert watcher.tick_uploads(now=time.time() + 5) == []
+    (tmp_path / ".PrusaSlicer.upload.second").write_bytes(b"GCDE" + bytes(16))
+    other = Watcher(config, data=data, temp=tmp_path, started=time.time() - 60)
+    other.tick_uploads()
+    (config.parent / "last-export.json").write_text(json.dumps({"timestamp": "2000-01-01"}))
+    found = other.tick_uploads(now=time.time() + 5)
+    assert len(found) == 2 and "binary G-code" in found[0][1]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows file sharing")
+def test_reading_never_blocks_deleting_or_replacing(tmp_path):
+    from threading import Timer
+
+    from basemark.config import atomic_write
+    from basemark.watch import open_shared
+
+    path = export(tmp_path, UPLOAD)
+    with open_shared(path) as stream:
+        stream.read(10)
+        path.unlink()  # PrusaSlicer deletes the copy after uploading it
+    path = export(tmp_path, UPLOAD)
+    held = path.open("rb")  # e.g. a virus scanner, for a moment
+    Timer(0.3, held.close).start()
+    atomic_write(path, b"stamped")  # BaseMark waits instead of failing the upload
+    assert path.read_bytes() == b"stamped"
+
+
+def test_upload_notice_texts():
+    from basemark.notify import destination
+
+    tone, title, body = texts("unstamped-upload", "Print preset “X” doesn't run BaseMark.")
+    assert tone == "warn" and title == "Sent to the printer without BaseMark"
+    env = {"SLIC3R_PP_HOST": "OctoPrint", "SLIC3R_PP_OUTPUT_NAME": "lab/part_PLA.gcode"}
+    assert destination(env, "C:/Temp/.PrusaSlicer.upload.x") == "part_PLA.gcode (sent to OctoPrint)"
+    env = {"SLIC3R_PP_HOST": "File", "SLIC3R_PP_OUTPUT_NAME": "E:/part.gcode"}
+    assert destination(env, "C:/Temp/.1.gcode.pp") == "E:/part.gcode"
+    assert destination({}, "job.gcode") == "job.gcode"

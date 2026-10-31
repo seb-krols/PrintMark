@@ -1,5 +1,27 @@
 # Changes
 
+## 0.9.0 — printing over the network, letters you can see
+
+- **Letters with walls.** A test print showed the old stamp was invisible: it only left the
+  plastic out of the letters, and at 3 mm a letter stroke is about one line wide, so the
+  lines beside it squashed into the gap. Now each letter is an empty pocket with its own
+  wall line around it, printed like the part's perimeters, before the infill; the slicer's
+  lines stop at the wall with the usual small overlap so they bond to it. A hole inside a
+  letter too small for a wall stays solid. Letters are spaced at least 1 mm apart so each
+  has room for its wall, which makes labels about 20% wider (`PLA` at 3 mm: 8.8 mm).
+- **Send to printer is covered by the warning too.** BaseMark already stamped jobs sent to
+  OctoPrint, PrusaLink and other printer hosts when the print preset runs it (PrusaSlicer
+  runs post-processing scripts before the upload). New: the background check also watches
+  the temporary copy PrusaSlicer uploads, so a job sent from a print preset without BaseMark
+  now gives *Sent to the printer without BaseMark* instead of going out unlabelled silently.
+- **Physical printers in setup.** When **Set up PrusaSlicer** makes a `… + BaseMark` printer
+  preset, it is added to the network printers that use the original, so selecting the
+  printer no longer switches back. The Overview check names the selected network printer
+  and flags one that would switch presets.
+- Notices and the Overview say where a job went, e.g. *part.gcode (sent to OctoPrint)*.
+- Safer file replacement on Windows: BaseMark waits up to 2 s instead of failing when
+  another program (a virus scanner, the background check) briefly has the file open.
+
 ## 0.8.0 — license: free for noncommercial use
 
 - **License: PolyForm Noncommercial 1.0.0.** Free for hobbyists, student groups, schools,

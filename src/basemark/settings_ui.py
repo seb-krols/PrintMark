@@ -343,8 +343,8 @@ class SettingsWindow:
             ttk.Label(notice_row, text=text, style="Card.TLabel").pack(side="left", padx=ui.px(10))
         ttk.Label(
             right,
-            text="The warning appears when a new export comes from a print preset that "
-            "doesn't run BaseMark, or is binary G-code.",
+            text="The warning appears when an export or a job sent to a printer comes from "
+            "a print preset that doesn't run BaseMark, or is binary G-code.",
             style="Card.Small.TLabel",
             wraplength=ui.px(270),
         ).pack(anchor="w")
@@ -427,10 +427,12 @@ class SettingsWindow:
             line = ttk.Frame(self.last_export, style="Card.TFrame")
             line.pack(fill="x", pady=(0, ui.px(8)))
             ui.pill(line, status.upper() or "UNKNOWN", tone).pack(side="left", anchor="n")
+            host = report.get("host") or "File"
+            sent = "" if host == "File" else f" (sent to {host})"
             ttk.Label(
                 line,
                 text=f"{report.get('message', '')}\n{local_time(report.get('timestamp', ''))}"
-                f" · {Path(str(report.get('source', ''))).name}",
+                f" · {Path(str(report.get('source', ''))).name}{sent}",
                 style="Card.Small.TLabel",
                 wraplength=ui.px(560),
             ).pack(side="left", padx=ui.px(10))

@@ -128,7 +128,7 @@ plain G-code output. BaseMark does not provide printer transfer or `.gcode.3mf` 
 
 | Symptom | Action |
 | --- | --- |
-| Warning *Exported without BaseMark* | The print preset used has no BaseMark hook (or the export was binary G-code). Select the `… + BaseMark` preset, or close PrusaSlicer and use **Set up PrusaSlicer**. The warning can be switched off on the Overview. |
+| Warning *Exported without BaseMark* or *Sent to the printer without BaseMark* | The print preset used has no BaseMark hook (or the export was binary G-code). Select the `… + BaseMark` preset, or close PrusaSlicer and use **Set up PrusaSlicer**. The warning can be switched off on the Overview. |
 | No popup or marking | Click **Check again** on BaseMark's Overview. Usually the print preset with the hook was never saved, a different preset or `.3mf` project preset is active, or the job was only sliced, not exported. If Recent exports shows *skipped*, the reason is listed; a safe skip leaves the export unchanged. |
 | File cannot fit a stamp | Use a larger footprint, adjust size/margin within limits, or skip this part. Holes and sparse bottoms reduce the usable area. |
 | Unsupported command/profile | Run `--dump-env` through the hook once, preserve a small original export and report the skip reason. Restore the normal hook afterward. |

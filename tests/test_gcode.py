@@ -4,14 +4,16 @@ import math
 import random
 
 import pytest
-from conftest import coupon
-from shapely.geometry import Point, box
+from conftest import coupon, outline_lines, retractions_kept
+from shapely import affinity, union_all
+from shapely.geometry import LineString, Point, Polygon, box
 
 from basemark.errors import SafeSkip
-from basemark.footprint import layer_footprint, placement_surface
+from basemark.footprint import layer_footprint, placement_surface, polygons
 from basemark.gcode_parser import parse
-from basemark.gcode_writer import rewrite
+from basemark.gcode_writer import OVERLAP, rewrite
 from basemark.placement import auto_place
+from basemark.text_geom import text_polygons
 
 
 def reparsed(output):
@@ -35,18 +37,62 @@ def test_extrusion_conservation_and_coordinate_restore(absolute, relative_xyz):
     assert after.moves[-1].end == pytest.approx(program.moves[-1].end, abs=1e-6)
     if absolute:
         assert after.moves[-1].e_end == pytest.approx(program.moves[-1].e_end, abs=1e-7)
-    assert [m.delta_e for m in after.moves if m.delta_e < 0] == pytest.approx(
-        [m.delta_e for m in program.moves if m.delta_e < 0]
-    )
+    body = "\n".join(line for line in result.text.splitlines() if not line.startswith("; BASEMARK"))
+    assert retractions_kept(program, after, body)
     assert result.text.split(";LAYER_CHANGE")[3:] == original.split(";LAYER_CHANGE")[3:]
     assert result.text.endswith("; spiral_vase = 0\n")
-    # E is filament length. Convert to volume before comparing with recess area.
+    # E is filament length. Convert to volume before comparing with recess area. The
+    # outlines give back what the band around the letters lost, plus the slicer lines'
+    # bonding overlap into them, so the net removal is a little under the pocket itself.
     removed_volume = result.removed_e * math.pi * (1.75 / 2) ** 2
-    assert removed_volume == pytest.approx(label.area * 2 * 0.2, rel=0.12)
+    pocket = label.area * 2 * 0.2
+    assert 0.6 * pocket < removed_volume < 1.1 * pocket
     for move in after.moves:
         if move.part and move.layer < 2:
             midpoint = Point((move.start[0] + move.end[0]) / 2, (move.start[1] + move.end[1]) / 2)
             assert not label.buffer(-1e-5).contains(midpoint)
+
+
+@pytest.mark.parametrize("absolute", [False, True])
+@pytest.mark.parametrize("height", [3.0, 8.0])
+def test_letters_become_outlined_pockets(absolute, height):
+    program = parse(coupon(absolute=absolute))
+    label = affinity.translate(text_polygons("PLA", height), 50, 27)
+    width = 0.45
+    counters = [Polygon(r) for p in polygons(label) for r in p.interiors]
+    roomy = [c for c in counters if c.buffer(-width / 2).area >= width * width]
+    small = [c for c in counters if c not in roomy]
+    assert small if height == 3.0 else not small  # 3 mm: the holes in P and A are ~1 mm
+    result = rewrite(program, label, 2, "PLA")
+    body = "\n".join(line for line in result.text.splitlines() if not line.startswith("; BASEMARK"))
+    after = parse(body)
+    inserted = outline_lines(body)
+    walled = union_all([Polygon(p.exterior) for p in polygons(label)] + roomy).boundary
+    for layer in (0, 1):
+        deposits = [m for m in after.moves if m.part and m.layer == layer]
+        lines = [LineString([m.start[:2], m.end[:2]]) for m in deposits]
+        walls = [p for p, m in zip(lines, deposits, strict=True) if m.index in inserted]
+        fill = [p for p, m in zip(lines, deposits, strict=True) if m.index not in inserted]
+        assert walls and all(
+            m.feature == "External perimeter" for m in deposits if m.index in inserted
+        )
+        # The letters are empty: nothing at all is printed inside them.
+        assert sum(p.intersection(label.buffer(-0.01)).length for p in lines) < 1e-6
+        # Each letter has a wall along its edge (sharp inside corner tips excepted) ...
+        drawn = union_all(walls)
+        missing = walled.difference(drawn.buffer(width / 2 + 0.01)).length
+        assert missing < 0.05 * walled.length
+        # ... nothing is printed twice: walls overlap neither each other nor, beyond the
+        # usual bonding overlap, the slicer's lines ...
+        assert drawn.buffer(width / 2).area > 0.9 * drawn.length * width
+        bond = width * (0.5 - OVERLAP) - 0.01  # slicer lines may reach into a wall this far
+        assert sum(p.intersection(drawn.buffer(bond)).length for p in fill) < 1e-6
+        # ... and holes too small for a wall keep the slicer's lines, so they stay solid.
+        for counter in small:
+            assert sum(p.intersection(counter).length for p in fill) > 0
+    if absolute:
+        assert after.moves[-1].e_end == pytest.approx(program.moves[-1].e_end, abs=1e-6)
+    assert retractions_kept(program, after, body)
 
 
 def test_purge_skirt_and_upper_layers_are_byte_identical(gcode):

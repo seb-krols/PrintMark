@@ -11,6 +11,9 @@ from shapely.geometry import Polygon
 from .errors import SafeSkip
 
 FONT_PATH = Path(__file__).parent / "assets" / "Lato-Bold.ttf"
+# Neighbouring letters stay this far apart, so a wall line (~0.45 mm) fits around each
+# one; the font's own spacing at 3 mm leaves as little as 0.04 mm.
+LETTER_GAP_MM = 1.0
 
 
 class FlattenPen(BasePen):
@@ -79,6 +82,7 @@ def text_polygons(text: str, height: float, mirrored: bool = True):
         scale = height / cap_height
         advance = 0.0
         letters = []
+        gap = LETTER_GAP_MM / scale
         for char in text:
             name = cmap.get(ord(char))
             if name is None:
@@ -94,7 +98,15 @@ def text_polygons(text: str, height: float, mirrored: bool = True):
                     raise SafeSkip("font outline is invalid")
                 glyph = glyph.symmetric_difference(ring)
             if not glyph.is_empty:
-                letters.append(affinity.translate(glyph, xoff=advance))
+                placed = affinity.translate(glyph, xoff=advance)
+                # Spread tight pairs (LA, AV) until each letter has room for its wall.
+                for _ in range(8):
+                    short = gap - placed.distance(letters[-1]) if letters else 0
+                    if short <= gap * 1e-3:
+                        break
+                    advance += short
+                    placed = affinity.translate(glyph, xoff=advance)
+                letters.append(placed)
             advance += font["hmtx"][name][0]
     if not letters:
         raise SafeSkip("label contains no printable outlines")

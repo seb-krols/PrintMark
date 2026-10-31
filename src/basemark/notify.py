@@ -16,7 +16,8 @@ from .licensing import LIMIT_REACHED
 
 USER_SKIP = "Label skipped; file unchanged, no ID consumed."
 UNSTAMPED = "unstamped"  # the background check found an export BaseMark never saw
-SECONDS = {"stamped": 6, "stamped-pending-audit": 20, UNSTAMPED: 30}  # others: 15 s
+UNSTAMPED_UPLOAD = "unstamped-upload"  # ... or a job sent to a printer without BaseMark
+SECONDS = {"stamped": 6, "stamped-pending-audit": 20, UNSTAMPED: 30, UNSTAMPED_UPLOAD: 30}
 
 
 def wanted(outcome) -> bool:
@@ -76,6 +77,15 @@ def announce(config: Path, outcome, overrides: dict, source: Path | str) -> None
         pass
 
 
+def destination(env: dict[str, str], source: Path | str) -> str:
+    """The name shown for an export: the target file, plus the printer host it is sent to."""
+    name = env.get("SLIC3R_PP_OUTPUT_NAME") or str(source)
+    host = env.get("SLIC3R_PP_HOST", "File")
+    if host and host != "File":  # "OctoPrint", "PrusaLink", "PrusaConnect", ...
+        return f"{Path(name).name} (sent to {host})"
+    return name
+
+
 def texts(status: str, message: str) -> tuple[str, str, str]:
     """(tone, title, body) for a status written by the export."""
     if status == "stamped":
@@ -91,10 +101,11 @@ def texts(status: str, message: str) -> tuple[str, str, str]:
             )
             return "warn", f"Stamped {label} on {details[0]}", f"{note}\n{rest}"
         return "ok", f"Stamped {label}", detail
-    if status == UNSTAMPED:
+    if status in (UNSTAMPED, UNSTAMPED_UPLOAD):
+        title = "Exported" if status == UNSTAMPED else "Sent to the printer"
         return (
             "warn",
-            "Exported without BaseMark",
+            f"{title} without BaseMark",
             f"{message}\nTurn this warning off in BaseMark → Overview.",
         )
     if status == "stamped-pending-audit":
