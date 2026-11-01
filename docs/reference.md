@@ -24,7 +24,7 @@ installs. An example is [examples/config.toml](../examples/config.toml). Precede
 | `warn_unstamped` | `true` | Overview | Background warning for exports made without BaseMark |
 | `template` | `"{material}"` | Overview, Stamp | Label text. `"{material} {id}"` adds the part number; `{date}` the export date |
 | `every_part` | `true` | Stamp | A label on every part of the plate; `false` = largest part only |
-| `text_height_mm` | `3.0` | Stamp | Capital-letter height, 2–12 mm |
+| `text_height_mm` | `4.0` | Stamp | Capital-letter height, 2–12 mm |
 | `min_text_height_mm` | `3.0` | Stamp | Automatic placement may shrink the text to this size |
 | `layers` | `2` | Stamp | Recess depth, 1–3 layers (one more solid layer is needed above) |
 | `margin_mm` | `1.5` | Stamp | Distance from first-layer edges and holes; at least 0.5 mm |

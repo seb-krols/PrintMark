@@ -116,7 +116,7 @@ def test_material_only_is_the_default_and_numbers_are_optional():
     assert Settings().template == "{material}"
     assert not Settings().numbered
     assert replace(Settings(), template="{material} {id}").validate().numbered
-    assert (Settings().text_height_mm, Settings().min_text_height_mm) == (3.0, 3.0)
+    assert (Settings().text_height_mm, Settings().min_text_height_mm) == (4.0, 3.0)
 
 
 def test_old_full_config_gets_new_defaults_but_keeps_choices(tmp_path):
@@ -130,7 +130,7 @@ def test_old_full_config_gets_new_defaults_but_keeps_choices(tmp_path):
     settings = load_settings(path)
     assert (settings.template, settings.text_height_mm, settings.margin_mm) == (
         "{material}",
-        3.0,
+        4.0,
         1.5,
     )
     assert (settings.layers, settings.counter_next) == (3, 7)

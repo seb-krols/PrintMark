@@ -91,7 +91,7 @@ read it on the part.
 | --- | --- |
 | Accept all labels | **Enter** or the green button |
 | Move a label | Drag it |
-| Make it bigger or smaller | **+** / **−** (3 mm by default, down to 2 mm by hand) |
+| Make it bigger or smaller | **+** / **−** (4 mm by default, down to 2 mm by hand) |
 | Turn it 90° | **R** |
 | Let BaseMark choose again | **A** (Auto place) |
 | Pick another part | Click it, or **Tab** |
@@ -163,21 +163,22 @@ asks first.
 
 ## Text size and small parts
 
-The default text is **3 mm** tall (capital letters). In the stamped layers no plastic goes
-into the letters; a wall line, drawn like the part's own perimeters and before its infill,
-runs around each letter, and the layer above bridges over. The wall gives every letter a
-clean edge the neighbouring lines cannot squash into. With a 0.4 mm nozzle the lines are
-about 0.45 mm wide; at 3 mm the letter strokes are about 0.55 mm. Letters are spaced at
-least 1 mm apart so each one has room for its wall. A hole inside a letter too small for a
-wall (the *A* at 3 mm) is printed solid by the slicer's own lines, so the letter keeps its
-shape. Common 3D-printing guidance: about 4 mm for text on a bottom face, with 2 mm failing
-and 3 mm marginal.
+The default text is **4 mm** tall (capital letters); a part too small for that gets 3 mm.
+Each letter is a cutout: in the stamped layers no plastic goes into it, a wall line runs
+around it, and the layer above bridges over. The slicer's lines are rejoined around the
+letters, as if the model had them as holes, so the nozzle does not cross them and print time
+stays about the same. Letters have no inner islands: *P*, *A*, *0* and the like are one full
+cutout, so `0` and `8` are told apart by their outline only.
 
-| Label | Text size | Smallest flat bottom (1.5 mm edge margin) |
-| --- | --- | --- |
-| `PLA` | 8.8 × 3 mm | about 12 × 6 mm |
-| `PETG` | 11.8 × 3.1 mm | about 15 × 6 mm |
-| `PLA 001` | 18.1 × 3.1 mm | about 21 × 6 mm |
+Letter strokes are at least 0.8 mm wide, because a narrower gap closes up when the first
+layer is squashed. That is the font's own width from about 4.3 mm; smaller text is thickened
+to reach it. Letters are spaced at least 1 mm apart so each one has room for its wall.
+
+| Label | Text size at 4 mm | At 3 mm | Smallest flat bottom (3 mm text, 1.5 mm edge margin) |
+| --- | --- | --- | --- |
+| `PLA` | 11.3 × 4.1 mm | 9.6 × 3.2 mm | about 13 × 6 mm |
+| `PETG` | 15 × 4.1 mm | 12.9 × 3.3 mm | about 16 × 6 mm |
+| `PLA 001` | 23.1 × 4.1 mm | 19.3 × 3.3 mm | about 22 × 6 mm |
 
 Smaller parts are left without a label (and the notice says so). For an occasional small
 part, the **−** button goes down to 2 mm. Print a test first: below 3 mm the letters may not

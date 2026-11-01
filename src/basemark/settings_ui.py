@@ -562,15 +562,15 @@ class SettingsWindow:
         self.setting_row(
             body,
             "Text height",
-            "Cap height of the letters, 2–12 mm. 3 mm is the smallest that prints cleanly "
-            "with a 0.4 mm nozzle; larger text reads more easily but needs a bigger part.",
+            "Cap height of the letters, 2–12 mm. 4 mm keeps the letters' own shape with a "
+            "0.4 mm nozzle; larger text reads more easily but needs a bigger part.",
             self.unit_entry("text_height_mm", "mm"),
         )
         self.setting_row(
             body,
             "Smallest text",
             "Automatic placement may shrink the text to this size to fit a small part. "
-            "Below 3 mm, print a test part first.",
+            "Under 4 mm the strokes are thickened so they stay open.",
             self.unit_entry("min_text_height_mm", "mm"),
         )
         self.setting_row(

@@ -14,6 +14,11 @@ FONT_PATH = Path(__file__).parent / "assets" / "Lato-Bold.ttf"
 # Neighbouring letters stay this far apart, so a wall line (~0.45 mm) fits around each
 # one; the font's own spacing at 3 mm leaves as little as 0.04 mm.
 LETTER_GAP_MM = 1.0
+# An empty stroke narrower than this closes up: the first layer is squashed sideways by
+# the nozzle's flat tip (~1 mm across). Lato Bold's stem is 0.186 x the cap height, so
+# text under about 4.3 mm is thickened to this.
+MIN_STROKE_MM = 0.8
+STEM_RATIO = 0.186
 
 
 class FlattenPen(BasePen):
@@ -82,7 +87,8 @@ def text_polygons(text: str, height: float, mirrored: bool = True):
         scale = height / cap_height
         advance = 0.0
         letters = []
-        gap = LETTER_GAP_MM / scale
+        swell = max(0.0, (MIN_STROKE_MM - STEM_RATIO * height) / 2)
+        gap = (LETTER_GAP_MM + 2 * swell) / scale
         for char in text:
             name = cmap.get(ord(char))
             if name is None:
@@ -111,6 +117,12 @@ def text_polygons(text: str, height: float, mirrored: bool = True):
     if not letters:
         raise SafeSkip("label contains no printable outlines")
     result = affinity.scale(union_all(letters), xfact=scale, yfact=scale, origin=(0, 0))
+    if swell:
+        result = result.buffer(swell, join_style="mitre", mitre_limit=2.0)
+    # Every letter is one full cutout. A hole in a letter (A, P, 0) would leave an island
+    # of plastic, and the nozzle can only get to one by crossing the letter.
+    parts = result.geoms if hasattr(result, "geoms") else [result]
+    result = union_all([Polygon(part.exterior) for part in parts])
     if mirrored:
         result = affinity.scale(result, xfact=-1, yfact=1, origin=(0, 0))
     left, bottom, right, top = result.bounds

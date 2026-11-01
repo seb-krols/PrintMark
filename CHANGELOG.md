@@ -1,5 +1,24 @@
 # Changes
 
+## 0.9.1 — letters that stay empty
+
+- **The letters are now really empty.** A test print of 0.9.0 showed the walls, but the
+  letters had filled in. BaseMark stopped asking for plastic inside a letter, but the nozzle
+  kept moving across at print speed, still under pressure: a crossing takes about 60 ms and
+  melted plastic keeps flowing far longer, so each line dragged a strand over the letter.
+  Now the letters print like real cutouts: the slicer's lines are cut at each letter and
+  rejoined around it, the way a slicer fills around a hole, so the nozzle no longer crosses
+  them. Print time stays about the same, and nothing lifts.
+- **Letters are full cutouts.** The holes in letters are gone: *P*, *A*, *0* and the like
+  are one solid cutout, because the nozzle could only reach an island inside a letter by
+  crossing it. `0` and `8` are told apart by their outline only.
+- **Strokes at least 0.8 mm wide.** At 3 mm they were 0.55 mm, about one line width, which the
+  squashed first layer closes up. Text under about 4.3 mm is thickened to 0.8 mm.
+- **Default text is 4 mm**; parts too small for that get 3 mm, as before. `PLA` is 11.3 mm
+  wide at 4 mm and 9.6 mm at 3 mm. A size you chose yourself is kept.
+- A piece of line shorter than one line width between two letters is left out instead of
+  printed as a blob.
+
 ## 0.9.0 — printing over the network, letters you can see
 
 - **Letters with walls.** A test print showed the old stamp was invisible: it only left the

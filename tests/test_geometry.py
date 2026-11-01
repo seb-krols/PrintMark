@@ -9,14 +9,23 @@ from basemark.placement import auto_place
 from basemark.text_geom import text_polygons
 
 
-def test_font_cap_height_mirror_and_holes():
+def test_font_cap_height_mirror_and_full_cutouts():
     normal = text_polygons("PLA", 6, mirrored=False)
     mirrored = text_polygons("PLA", 6)
     assert normal.bounds[3] - normal.bounds[1] == pytest.approx(6)
     assert affinity.scale(mirrored, xfact=-1, yfact=1, origin=(0, 0)).equals_exact(normal, 1e-7)
     zero = text_polygons("0", 6)
-    assert len(zero.interiors) == 1
-    assert not zero.contains(zero.centroid)
+    assert not zero.interiors  # no island of plastic inside a letter
+    assert zero.contains(zero.centroid)
+
+
+@pytest.mark.parametrize("height", [2.0, 3.0, 4.0, 8.0])
+def test_no_letter_has_an_island(height):
+    for code in range(33, 127):
+        label = text_polygons(chr(code), height)
+        assert label.is_valid and not label.is_empty
+        for part in getattr(label, "geoms", [label]):
+            assert not part.interiors, chr(code)
 
 
 def test_holes_and_concave_surface_respected():

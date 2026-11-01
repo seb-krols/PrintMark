@@ -118,7 +118,7 @@ def test_real_prusaslicer_plate_with_firmware_labels(tmp_path):
     job = tmp_path / "plate.gcode"
     job.write_bytes(source.read_bytes())
     result = process(job, tmp_path / "config.toml", {"mode": "auto"}, {})
-    assert result.message.startswith("Stamped PLA · 3 parts · 2 layers · 3 mm")
+    assert result.message.startswith("Stamped PLA · 3 parts · 2 layers · 4 mm")
     text = job.read_text()
     # Upper layers are byte-identical.
     assert text.split(";LAYER_CHANGE")[3:] == source.read_text().split(";LAYER_CHANGE")[3:]

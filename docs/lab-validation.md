@@ -13,7 +13,7 @@ Owner: Sebastians Krols, UBC IGEN 3D Print Shop.
    with the shop's actual profile and at least four solid bottom layers for a three-layer stamp.
 6. Reopen the final exported file in PrusaSlicer's G-code Viewer. Check layers 1–N for the
    mirrored text gap, layer N+1 for an intact roof, and the purge/skirt/upper layers for changes.
-7. Print an unstamped control and a 3 mm / 2-layer coupon first (also try 2.5 mm by hand to
+7. Print an unstamped control and a 4 mm / 2-layer coupon first (also try 3 mm by hand to
    see where lettering stops being legible on your printer). Observe the early layers.
 
 **Do not print regression G-code files from `tests/fixtures`.** Their startup sequences are
@@ -43,7 +43,7 @@ For each specimen, record:
 
 - Label and CSV ID agree; material matches the spool actually loaded.
 - Readability under ordinary shop lighting by two people who have not seen the job name.
-- Glyph counters (`P`, `A`, `0`, `4`) remain distinguishable; text reads correctly from below.
+- Letters are full cutouts without inner islands and stay readable; text reads correctly from below.
 - Roof quality, droop, ooze, debris and any visible change on the top face.
 - Adhesion/lifting around the label compared with the unstamped control.
 - Effect on thin walls, sealing or mating faces; use **Skip label** when inappropriate.

@@ -173,7 +173,7 @@ def test_hardlinked_lock_cannot_truncate_gcode(job_file, tmp_path):
 def test_material_only_label_uses_no_id(job_file, tmp_path):
     result = process(job_file, tmp_path / "config.toml", {"mode": "auto"}, {})
     assert (result.status, result.part_id) == ("stamped", "")
-    assert result.message.startswith("Stamped PLA · 2 layers · 3 mm")
+    assert result.message.startswith("Stamped PLA · 2 layers · 4 mm")
     assert job_file.read_text(encoding="utf-8").startswith("; BASEMARK stamp PLA; layers=2;")
     assert not (tmp_path / "counter.json").exists() and not (tmp_path / "log.csv").exists()
     with pytest.raises(SafeSkip, match="already"):

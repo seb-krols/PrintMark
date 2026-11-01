@@ -3,6 +3,33 @@
 This document distinguishes software checks from tests on physical printers. It is not a
 certificate of print quality or blanket firmware compatibility.
 
+## v0.9.1 (Windows 11, 2026-10-31)
+
+- Cause of the 0.9.0 print with filled-in letters, found by reading the stamped G-code of a
+  real PrusaSlicer 2.8.1 fixture: 30 of the 33 moves over a letter on the first layer were
+  print-speed moves without a retraction, about 60 ms each. The explanation that the plastic
+  dragged across is reasoned from this and the print's appearance, not measured.
+- New tests stamp `PLA` at 3 mm and 8 mm on all four combinations of absolute/relative E and
+  XYZ: the few moves left over a letter are all retracted, no filament is primed over a
+  letter, print moves stay at layer height. Others check that BaseMark adds no Z moves, that
+  fill keeps its feed rate, and that separate lines with retracted, lifted travels between
+  them are rejoined with the filament count intact. The three real 2.8.1 fixtures pass the
+  crossing checks.
+- No printable ASCII character has an inner hole at 2, 3, 4 or 8 mm.
+- End to end through the export path, judged on the final file against the exact label: the
+  four PrusaSlicer fixtures (one a three-part plate) and real slices of the coupon with
+  monotonic and rectilinear bottom fill, each stamped with `PLA`, `ABS-086`, `PETG-CF` and a
+  3-layer `PLA` at 3 mm. All 24 had no plastic in the letters, no primed level move over them,
+  the filament count matching, and every layer above the stamp byte-identical.
+- Retractions added by BaseMark, on both stamped layers together: 17 to 24 for a `PLA` label,
+  33 to 38 for a seven-character label. The slicer's own are unchanged.
+- Print time of the stamped layers is the same or slightly shorter than the unstamped file on
+  the real fixtures, up to about 5 s shorter for `PLA 001` (estimated from the file's feed
+  rates, ignoring acceleration, not timed).
+- 233 automated tests passed.
+- Not yet tested: a print of 0.9.1. Whether 0.8 mm strokes are enough, and how the rejoined
+  line ends look, has to be judged on a real print.
+
 ## v0.9.0 (Windows 11, 2026-10-30)
 
 - New automated tests for uploads: an upload copy from a preset without BaseMark is reported

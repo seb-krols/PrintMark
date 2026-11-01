@@ -51,9 +51,9 @@ class Settings:
     enabled: bool = True
     mode: str = "interactive"
     template: str = MATERIAL_ONLY
-    # Lato Bold strokes are ~0.18 x cap height: 3 mm gives ~0.55 mm strokes, just over
-    # one 0.45 mm first-layer line, and ~1 mm counters. Smaller text starts to fill in.
-    text_height_mm: float = 3.0
+    # 4 mm keeps the letters' own shape with 0.8 mm strokes (see text_geom.MIN_STROKE_MM);
+    # parts too small for that drop to 3 mm, where the strokes are thickened to fit.
+    text_height_mm: float = 4.0
     min_text_height_mm: float = 3.0
     layers: int = 2
     # Keeps the label clear of the two outer perimeters (~0.9 mm).

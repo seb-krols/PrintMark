@@ -4,6 +4,7 @@ import math
 from pathlib import Path
 
 import pytest
+from shapely.geometry import LineString, Point
 
 
 def coupon(*, absolute=False, relative_xyz=False, width=80, depth=35, layers=4, spacing=0.4):
@@ -114,14 +115,41 @@ def outline_lines(text):
     return found
 
 
-def retractions_kept(original, after, text):
+def retractions_kept(original, after):
     """The slicer's retractions are untouched; every one BaseMark adds is undone."""
-    inserted = outline_lines(text)
-    kept = [m.delta_e for m in after.moves if m.delta_e < 0 and m.index not in inserted]
-    added = [m.delta_e for m in after.moves if m.length < 1e-9 and m.index in inserted]
+    ours = [m.delta_e for m in after.moves if "BaseMark retract" in m.comment]
+    kept = [m.delta_e for m in after.moves if m.delta_e < 0 and "BaseMark retract" not in m.comment]
     return kept == pytest.approx([m.delta_e for m in original.moves if m.delta_e < 0]) and (
-        sum(added) == pytest.approx(0, abs=1e-6)
+        sum(ours) == pytest.approx(0, abs=1e-6)
     )
+
+
+def added_retractions(after):
+    return sum("BaseMark retract" in m.comment and m.delta_e < 0 for m in after.moves)
+
+
+def letter_crossings(after, label, layers=2):
+    """How the nozzle meets the letters in the stamped layers.
+
+    Returns (moves over a letter, as (move, retracted), and the filament pushed back in
+    while over a letter)."""
+    primed, seen, primes = True, [], []
+    empty = label.buffer(-0.02)
+    for move in after.moves:
+        level = abs(move.end[2] - move.start[2]) < 1e-9  # not a move up to the next layer
+        if 0 <= move.layer < layers and level:
+            over = (
+                empty.intersects(LineString([move.start[:2], move.end[:2]]))
+                if move.length > 1e-9
+                else empty.contains(Point(move.start[:2]))
+            )
+            if over and move.length > 1e-9:
+                seen.append((move, not primed))
+            elif over and move.delta_e > 0:
+                primes.append(move)
+        if move.delta_e:
+            primed = move.delta_e > 0
+    return seen, primes
 
 
 @pytest.fixture

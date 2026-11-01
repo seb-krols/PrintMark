@@ -4,14 +4,20 @@ import math
 import random
 
 import pytest
-from conftest import coupon, outline_lines, retractions_kept
+from conftest import (
+    added_retractions,
+    coupon,
+    letter_crossings,
+    outline_lines,
+    retractions_kept,
+)
 from shapely import affinity, union_all
-from shapely.geometry import LineString, Point, Polygon, box
+from shapely.geometry import LineString, Point, box
 
 from basemark.errors import SafeSkip
-from basemark.footprint import layer_footprint, placement_surface, polygons
+from basemark.footprint import layer_footprint, placement_surface
 from basemark.gcode_parser import parse
-from basemark.gcode_writer import OVERLAP, rewrite
+from basemark.gcode_writer import MAX_RETRACT_MM, OVERLAP, Retract, rewrite, styles
 from basemark.placement import auto_place
 from basemark.text_geom import text_polygons
 
@@ -37,8 +43,7 @@ def test_extrusion_conservation_and_coordinate_restore(absolute, relative_xyz):
     assert after.moves[-1].end == pytest.approx(program.moves[-1].end, abs=1e-6)
     if absolute:
         assert after.moves[-1].e_end == pytest.approx(program.moves[-1].e_end, abs=1e-7)
-    body = "\n".join(line for line in result.text.splitlines() if not line.startswith("; BASEMARK"))
-    assert retractions_kept(program, after, body)
+    assert retractions_kept(program, after)
     assert result.text.split(";LAYER_CHANGE")[3:] == original.split(";LAYER_CHANGE")[3:]
     assert result.text.endswith("; spiral_vase = 0\n")
     # E is filament length. Convert to volume before comparing with recess area. The
@@ -59,15 +64,11 @@ def test_letters_become_outlined_pockets(absolute, height):
     program = parse(coupon(absolute=absolute))
     label = affinity.translate(text_polygons("PLA", height), 50, 27)
     width = 0.45
-    counters = [Polygon(r) for p in polygons(label) for r in p.interiors]
-    roomy = [c for c in counters if c.buffer(-width / 2).area >= width * width]
-    small = [c for c in counters if c not in roomy]
-    assert small if height == 3.0 else not small  # 3 mm: the holes in P and A are ~1 mm
     result = rewrite(program, label, 2, "PLA")
     body = "\n".join(line for line in result.text.splitlines() if not line.startswith("; BASEMARK"))
     after = parse(body)
     inserted = outline_lines(body)
-    walled = union_all([Polygon(p.exterior) for p in polygons(label)] + roomy).boundary
+    walled = label.boundary
     for layer in (0, 1):
         deposits = [m for m in after.moves if m.part and m.layer == layer]
         lines = [LineString([m.start[:2], m.end[:2]]) for m in deposits]
@@ -87,12 +88,107 @@ def test_letters_become_outlined_pockets(absolute, height):
         assert drawn.buffer(width / 2).area > 0.9 * drawn.length * width
         bond = width * (0.5 - OVERLAP) - 0.01  # slicer lines may reach into a wall this far
         assert sum(p.intersection(drawn.buffer(bond)).length for p in fill) < 1e-6
-        # ... and holes too small for a wall keep the slicer's lines, so they stay solid.
-        for counter in small:
-            assert sum(p.intersection(counter).length for p in fill) > 0
+        # ... and no scrap of a line is left between them.
+        assert not [p for p in fill if p.length < 0.1]
     if absolute:
         assert after.moves[-1].e_end == pytest.approx(program.moves[-1].e_end, abs=1e-6)
-    assert retractions_kept(program, after, body)
+    assert retractions_kept(program, after)
+
+
+@pytest.mark.parametrize("absolute", [False, True])
+@pytest.mark.parametrize("relative_xyz", [False, True])
+@pytest.mark.parametrize("height", [3.0, 8.0])
+def test_lines_go_around_the_letters(absolute, relative_xyz, height):
+    """Plastic keeps flowing after the E word stops, so a line must not cross a letter."""
+    program = parse(coupon(absolute=absolute, relative_xyz=relative_xyz))
+    label = affinity.translate(text_polygons("PLA", height), 50, 27)
+    after = reparsed(rewrite(program, label, 2, "PLA").text)
+    seen, primes = letter_crossings(after, label)
+    assert all(retracted for _, retracted in seen)  # the few that remain are dry
+    assert added_retractions(after) <= 30  # both layers: a handful, not one per line
+    assert not primes  # the filament only comes back beside a letter
+    for move in after.moves:
+        if move.part and move.layer < 2:
+            assert move.end[2] == pytest.approx((move.layer + 1) * 0.2)
+
+
+def test_the_nozzle_never_lifts_for_a_letter():
+    program = parse(coupon())
+    label = affinity.translate(text_polygons("PLA", 4.0), 50, 27)
+    stamped = rewrite(program, label, 2, "PLA").text
+    added = [line for line in stamped.splitlines() if line not in coupon().splitlines()]
+    assert not [line for line in added if " Z" in line]
+
+
+def modal_feeds(program):
+    feed, result = 0.0, {}
+    for move in program.moves:
+        feed = move.params.get("F", feed)
+        if move.part and "BaseMark" not in move.comment:
+            result.setdefault((move.layer, move.feature), set()).add(feed)
+    return result
+
+
+def test_lines_keep_their_feed_rate():
+    gcode = "\n".join(
+        line.replace(" F1800", "") if " E" in line and line.startswith("G1 X") else line
+        for line in coupon().replace("G1 X2.000000", "G1 F1800 X2.000000").splitlines()
+    )
+    gcode = gcode.replace(" F1800 ;", " ;")
+    program = parse(gcode)
+    label = affinity.translate(text_polygons("PLA", 4.0), 50, 27)
+    after = reparsed(rewrite(program, label, 2, "PLA").text)
+    body = {k: v for k, v in modal_feeds(after).items() if k[1] == "Solid infill"}
+    original = {k: v for k, v in modal_feeds(program).items() if k[1] == "Solid infill"}
+    assert body == original
+
+
+def test_slicer_travels_over_a_letter_are_retracted():
+    gcode = coupon().replace(
+        ";TYPE:Solid infill\n",
+        ";TYPE:Solid infill\nG1 X49 Y27 F6000\nG1 X51 Y27 F6000\n",
+    )
+    program = parse(gcode)
+    label = box(49.5, 26, 50.5, 28)
+    after = reparsed(rewrite(program, label, 2, "PLA").text)
+    assert all(retracted for _, retracted in letter_crossings(after, label)[0])
+
+
+def test_retracted_travels_between_lines_are_rejoined():
+    """Monotonic fill: separate lines with a retracted travel between them."""
+    lines = []
+    for line in coupon().splitlines():
+        lines.append(line)
+        if line.startswith("G1 X") and " E" in line and "untouched" not in line:
+            lines += ["G1 E-0.8 F2400", "G1 Z0.5 F600"]
+            lines += ["G1 Z" + current_z(lines) + " F600", "G1 E0.8 F2400"]
+    program = parse("\n".join(lines) + "\n")
+    label = affinity.translate(text_polygons("PLA", 4.0), 50, 27)
+    result = rewrite(program, label, 2, "PLA")
+    after = reparsed(result.text)
+    assert sum(m.delta_e for m in program.moves) - sum(
+        m.delta_e for m in after.moves
+    ) == pytest.approx(result.removed_e, abs=1e-6)
+    seen, primes = letter_crossings(after, label)
+    assert all(retracted for _, retracted in seen)
+    assert not primes
+
+
+def current_z(lines):
+    return next(x for x in reversed(lines) if x.startswith(";Z:"))[3:]
+
+
+def test_wiped_retraction_takes_its_length_from_the_unretraction():
+    gcode = coupon().replace("G1 E-0.800000000 F2400 ; retract", "G1 E-0.040000000 F2400 ; retract")
+    gcode = gcode.replace("G1 E0.800000000 F2400 ; unretract", "G1 E0.800000000 F1500 ; unretract")
+    _, _, retract = styles(parse(gcode), 2)
+    assert retract == Retract(0.8, 2400, 1500)
+
+
+def test_bowden_retraction_is_capped_for_crossings():
+    gcode = coupon().replace("E-0.800000000 F2400", "E-6.000000000 F2400")
+    gcode = gcode.replace("E0.800000000 F2400", "E6.000000000 F2400")
+    assert styles(parse(gcode), 2)[2].length == MAX_RETRACT_MM
 
 
 def test_purge_skirt_and_upper_layers_are_byte_identical(gcode):
